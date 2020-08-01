@@ -12,4 +12,4 @@ jobs:
         with: { python-version: '3.x' }
 
       - run: make dev-install
-      - run: make dry-format
+      - run: make try-format

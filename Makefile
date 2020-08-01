@@ -1,4 +1,4 @@
-.PHONY: help clean install dev-install self-install build format dry-format test docs lock
+.PHONY: help clean install dev-install self-install build format try-format test docs lock
 
 
 help:  ## display this help
@@ -33,7 +33,7 @@ format:  ## format code with black
 	python -m black .
 
 
-dry-format:  ## dry-format code with black
+try-format:  ## try to format code with black
 	python -m black --check .
 
 
