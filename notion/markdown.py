@@ -90,7 +90,8 @@ def _extract_text_and_format_from_ast(item):
         return item.get("literal", ""), ("c",)
 
     if item["type"] == "link":
-        return item.get("literal", ""), ("a", item.get("destination", "#"))
+        if "destination" in item:
+            return item.get("literal", ""), ("a", item["destination"])
 
     return item.get("literal", ""), ()
 
@@ -178,15 +179,17 @@ def markdown_to_notion(markdown):
 
     return cleanup_dashes(consolidated)
 
+
 def cleanup_dashes(thing):
-    regex_pattern = re.compile('⸻|%E2%B8%BB')
+    regex_pattern = re.compile("⸻|%E2%B8%BB")
     if type(thing) is list:
         for counter, value in enumerate(thing):
             thing[counter] = cleanup_dashes(value)
     elif type(thing) is str:
-        return regex_pattern.sub('-', thing)
+        return regex_pattern.sub("-", thing)
 
     return thing
+
 
 def notion_to_markdown(notion):
 
