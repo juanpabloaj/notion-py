@@ -14,4 +14,3 @@ jobs:
       - run: make dev-install
       - run: make install
       - run: make test
-

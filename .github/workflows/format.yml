@@ -13,4 +13,3 @@ jobs:
 
       - run: make dev-install
       - run: make dry-format
-
