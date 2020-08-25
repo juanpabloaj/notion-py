@@ -1,4 +1,36 @@
-from notion.block import *
+from notion.block.basic import (
+    BulletedListBlock,
+    CalloutBlock,
+    CodeBlock,
+    DividerBlock,
+    EquationBlock,
+    HeaderBlock,
+    NumberedListBlock,
+    PageBlock,
+    QuoteBlock,
+    SubHeaderBlock,
+    SubSubHeaderBlock,
+    TextBlock,
+    ToDoBlock,
+    ToggleBlock,
+)
+from notion.block.common import Block
+from notion.block.embed import (
+    BookmarkBlock,
+    CodepenBlock,
+    DriveBlock,
+    EmbedBlock,
+    FigmaBlock,
+    FramerBlock,
+    GistBlock,
+    InvisionBlock,
+    LoomBlock,
+    MapsBlock,
+    TweetBlock,
+    TypeformBlock,
+)
+from notion.block.media import BreadcrumbBlock
+from notion.block.upload import UploadBlock, FileBlock, ImageBlock, PdfBlock, VideoBlock
 
 
 def assert_block_is_okay(notion, block, type, parent=None, **kwargs):
@@ -91,43 +123,43 @@ def test_codepen_block(notion):
     assert_block_attributes(block, source=source, caption="caption")
 
 
-def test_collection_view_block(notion):
-    block = notion.root_page.children.add_new(CollectionViewBlock)
-    assert_block_is_okay(**locals(), type="collection_view")
+# def test_collection_view_block(notion):
+#    block = notion.root_page.children.add_new(CollectionViewBlock)
+#    assert_block_is_okay(**locals(), type="collection_view")
+#
+#
+# def test_collection_view_page_block(notion):
+#    block = notion.root_page.children.add_new(CollectionViewPageBlock)
+#    assert_block_is_okay(**locals(), type="collection_view_page")
+#    assert_block_attributes(block, icon="✔️", cover="cover")
+#
+#
+# def test_column_block(notion):
+#    block = notion.root_page.children.add_new(ColumnBlock)
+#    assert_block_is_okay(**locals(), type="column")
+#
+#    assert block.column_ratio is None
+#    assert len(block.children) == 0
+#
+#    block.column_ratio = 1 / 2
+#    block.refresh()
+#
+#    assert block.column_ratio == 1 / 2
 
 
-def test_collection_view_page_block(notion):
-    block = notion.root_page.children.add_new(CollectionViewPageBlock)
-    assert_block_is_okay(**locals(), type="collection_view_page")
-    assert_block_attributes(block, icon="✔️", cover="cover")
-
-
-def test_column_block(notion):
-    block = notion.root_page.children.add_new(ColumnBlock)
-    assert_block_is_okay(**locals(), type="column")
-
-    assert block.column_ratio is None
-    assert len(block.children) == 0
-
-    block.column_ratio = 1 / 2
-    block.refresh()
-
-    assert block.column_ratio == 1 / 2
-
-
-def test_column_list_block(notion):
-    block = notion.root_page.children.add_new(ColumnListBlock)
-    assert_block_is_okay(**locals(), type="column_list")
-
-    assert len(block.children) == 0
-
-    block.children.add_new(ColumnBlock)
-    block.children.add_new(ColumnBlock)
-    block.evenly_space_columns()
-    block.refresh()
-
-    assert len(block.children) == 2
-    assert block.children[0].column_ratio == 1 / 2
+# def test_column_list_block(notion):
+#    block = notion.root_page.children.add_new(ColumnListBlock)
+#    assert_block_is_okay(**locals(), type="column_list")
+#
+#    assert len(block.children) == 0
+#
+#    block.children.add_new(ColumnBlock)
+#    block.children.add_new(ColumnBlock)
+#    block.evenly_space_columns()
+#    block.refresh()
+#
+#    assert len(block.children) == 2
+#    assert block.children[0].column_ratio == 1 / 2
 
 
 def test_divider_block(notion):
@@ -151,17 +183,10 @@ def test_embed_block(notion):
     assert block.caption == ""
 
     caption = "block embed caption"
-    block.upload_file("requirements.txt")
     block.caption = caption
     block.refresh()
 
-    assert "secure.notion-static.com" in block.source
     assert block.caption == caption
-
-
-def test_embed_or_upload_block(notion):
-    block = notion.root_page.children.add_new(EmbedOrUploadBlock)
-    assert_block_is_okay(**locals(), type="embed")
 
 
 def test_equation_block(notion):
@@ -170,10 +195,11 @@ def test_equation_block(notion):
     assert_block_attributes(block, title="E=mc^{2}", color="blue")
 
 
-def test_factory_block(notion):
-    block = notion.root_page.children.add_new(FactoryBlock)
-    assert_block_is_okay(**locals(), type="factory")
-    assert_block_attributes(block, title="factory", color="blue")
+# def test_factory_block(notion):
+#    block = notion.root_page.children.add_new(FactoryBlock)
+#    assert_block_is_okay(**locals(), type="factory")
+#    assert_block_attributes(block, title="factory", color="blue")
+#
 
 
 def test_figma_block(notion):
@@ -212,12 +238,6 @@ def test_gist_block(notion):
     assert_block_attributes(block, source=source, caption="caption")
 
 
-def test_header_block(notion):
-    block = notion.root_page.children.add_new(HeaderBlock)
-    assert_block_is_okay(**locals(), type="header")
-    assert_block_attributes(block, title="header", color="blue")
-
-
 def test_image_block(notion):
     block = notion.root_page.children.add_new(ImageBlock)
     assert_block_is_okay(**locals(), type="image")
@@ -231,9 +251,9 @@ def test_invision_block(notion):
     assert_block_is_okay(**locals(), type="invision")
 
 
-def test_link_to_collection_block(notion):
-    block = notion.root_page.children.add_new(LinkToCollectionBlock)
-    assert_block_is_okay(**locals(), type="link_to_collection")
+# def test_link_to_collection_block(notion):
+#    block = notion.root_page.children.add_new(LinkToCollectionBlock)
+#    assert_block_is_okay(**locals(), type="link_to_collection")
 
 
 def test_loom_block(notion):
@@ -262,7 +282,7 @@ def test_numbered_list_block(notion):
 
 
 def test_pdf_block(notion):
-    block = notion.root_page.children.add_new(PDFBlock)
+    block = notion.root_page.children.add_new(PdfBlock)
     assert_block_is_okay(**locals(), type="pdf")
 
 
@@ -281,14 +301,20 @@ def test_quote_block(notion):
     assert_block_attributes(block, title="quote", color="blue")
 
 
-def test_subheader_block(notion):
-    block = notion.root_page.children.add_new(SubheaderBlock)
+def test_header_block(notion):
+    block = notion.root_page.children.add_new(HeaderBlock)
+    assert_block_is_okay(**locals(), type="header")
+    assert_block_attributes(block, title="header", color="blue")
+
+
+def test_sub_header_block(notion):
+    block = notion.root_page.children.add_new(SubHeaderBlock)
     assert_block_is_okay(**locals(), type="sub_header")
     assert_block_attributes(block, title="subheader", color="blue")
 
 
-def test_subsubheader_block(notion):
-    block = notion.root_page.children.add_new(SubsubheaderBlock)
+def test_sub_sub_header_block(notion):
+    block = notion.root_page.children.add_new(SubSubHeaderBlock)
     assert_block_is_okay(**locals(), type="sub_sub_header")
     assert_block_attributes(block, title="subsubheader", color="blue")
 
@@ -299,8 +325,8 @@ def test_text_block(notion):
     assert_block_attributes(block, title="text", color="blue")
 
 
-def test_todo_block(notion):
-    block = notion.root_page.children.add_new(TodoBlock)
+def test_to_do_block(notion):
+    block = notion.root_page.children.add_new(ToDoBlock)
     assert_block_is_okay(**locals(), type="to_do")
     assert_block_attributes(block, title="text", color="blue", checked=True)
 

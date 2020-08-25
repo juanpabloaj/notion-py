@@ -1,11 +1,14 @@
-from .logger import logger
-from .maps import property_map, field_map
-from .records import Record
+from notion.maps import field_map
+from notion.record import Record
 
 
-class User(Record):
+class NotionUser(Record):
+    """
+    Representation of a Notion user.
+    """
 
     _table = "notion_user"
+    _str_fields = "email", "full_name"
 
     user_id = field_map("user_id")
     given_name = field_map("given_name")
@@ -16,7 +19,17 @@ class User(Record):
 
     @property
     def full_name(self):
-        return " ".join([self.given_name or "", self.family_name or ""]).strip()
+        """
+        Get full user name.
+
+        Returns
+        -------
+        str
+            User name.
+        """
+        given = self.given_name or ""
+        family = self.family_name or ""
+        return f"{given} {family}".strip()
 
     def _str_fields(self):
-        return super()._str_fields() + ["email", "full_name"]
+        return super()._str_fields() + self.Meta.str_fields

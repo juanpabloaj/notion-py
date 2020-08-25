@@ -1,22 +1,68 @@
-from .utils import now
+from typing import Union, Iterable
+
+from notion.utils import now
 
 
-def build_operation(id, path, args, command="set", table="block"):
+def build_operation(
+    id: str,
+    path: Union[Iterable, str],
+    args,
+    command: str = "set",
+    table: str = "block",
+) -> dict:
     """
-    Data updates sent to the submitTransaction endpoint consist of a sequence of "operations". This is a helper
-    function that constructs one of these operations.
-    """
+    Build sequence of operations for submitTransaction endpoint.
 
+    Arguments
+    ---------
+    id : str
+        ID of the object.
+
+    path : list of str or str
+        Key for the object.
+
+    args
+        Arguments?
+
+    command : str, optional
+        Command to execute.
+        Defaults to "set".
+
+    table : str, optional
+        Table argument for endpoint.
+        Defaults to "block".
+
+    Returns
+    -------
+    dict
+        Valid dict for the endpoint.
+    """
     if isinstance(path, str):
         path = path.split(".")
 
     return {"id": id, "path": path, "args": args, "command": command, "table": table}
 
 
-def operation_update_last_edited(user_id, block_id):
+def operation_update_last_edited(user_id, block_id) -> dict:
     """
-    When transactions are submitted from the web UI, it also includes an operation to update the "last edited"
-    fields, so we want to send those too, for consistency -- this convenience function constructs the operation.
+    Convenience function for constructing "last edited" operation.
+
+    When transactions are submitted from the web UIit also
+    includes an operation to update the "last edited" fields,
+    so we want to send those too, for consistency.
+
+    Arguments
+    ---------
+    user_id : str
+        User ID
+
+    block_id : str
+        Block ID
+
+    Returns
+    -------
+    dict
+        Constructed dict with last edited operation included.
     """
     return {
         "args": {"last_edited_by": user_id, "last_edited_time": now()},

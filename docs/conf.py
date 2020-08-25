@@ -3,8 +3,7 @@ import sys
 from datetime import date
 
 # for import below
-sys.path.insert(0, os.path.abspath("../"))
-
+sys.path.insert(0, os.path.abspath(".."))
 from notion import __name__, __author__, __version__
 
 project = __name__

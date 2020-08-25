@@ -69,7 +69,7 @@ page.title = "The title has now changed, and has *live-updated* in the browser!"
 ## Concepts and notes
 
 - We map tables in the Notion database into Python classes (subclassing `Record`), with each instance of a class representing a particular record. Some fields from the records (like `title` in the example above) have been mapped to model properties, allowing for easy, instantaneous read/write of the record. Other fields can be read with the `get` method, and written with the `set` method, but then you'll need to make sure to match the internal structures exactly.
-- The tables we currently support are **block** (via [`Block` class and its subclasses](https://github.com/jamalex/notion-py/blob/c65c9b14ed5dcd6d9326264f2e888ab343d2b831/notion/block.py#L143), corresponding to different `type` of blocks), **space** (via [`Space` class](https://github.com/jamalex/notion-py/blob/c65c9b14ed5dcd6d9326264f2e888ab343d2b831/notion/space.py#L6)), **collection** (via [`Collection` class](https://github.com/jamalex/notion-py/blob/c65c9b14ed5dcd6d9326264f2e888ab343d2b831/notion/collection.py#L91)), **collection_view** (via [`CollectionView` and subclasses](https://github.com/jamalex/notion-py/blob/c65c9b14ed5dcd6d9326264f2e888ab343d2b831/notion/collection.py#L175)), and **notion_user** (via [`User` class](https://github.com/jamalex/notion-py/blob/master/notion/user.py)).
+- The tables we currently support are **block** (via [`Block` class and its subclasses](https://github.com/jamalex/notion-py/blob/c65c9b14ed5dcd6d9326264f2e888ab343d2b831/notion/block.py#L143), corresponding to different `type` of blocks), **space** (via [`Space` class](https://github.com/jamalex/notion-py/blob/c65c9b14ed5dcd6d9326264f2e888ab343d2b831/notion/space.py#L6)), **collection** (via [`Collection` class](https://github.com/jamalex/notion-py/blob/c65c9b14ed5dcd6d9326264f2e888ab343d2b831/notion/collection.py#L91)), **collection_view** (via [`CollectionView` and subclasses](https://github.com/jamalex/notion-py/blob/c65c9b14ed5dcd6d9326264f2e888ab343d2b831/notion/collection.py#L175)), and **notion_user** (via [`NotionUser` class](https://github.com/jamalex/notion-py/blob/master/notion/user.py)).
 - Data for all tables are stored in a central [`RecordStore`](https://github.com/jamalex/notion-py/blob/c65c9b14ed5dcd6d9326264f2e888ab343d2b831/notion/store.py#L69), with the `Record` instances not storing state internally, but always referring to the data in the central `RecordStore`. Many API operations return updating versions of a large number of associated records, which we use to update the store, so the data in `Record` instances may sometimes update without being explicitly requested. You can also call the `refresh` method on a `Record` to trigger an update, or pass `force_update` to methods like `get`.
 - The API doesn't have strong validation of most data, so be careful to maintain the structures Notion is expecting. You can view the full internal structure of a record by calling `myrecord.get()` with no arguments.
 - When you call `client.get_block`, you can pass in either an ID, or the URL of a page. Note that pages themselves are just `blocks`, as are all the chunks of content on the page. You can get the URL for a block within a page by clicking "Copy Link" in the context menu for the block, and pass that URL into `get_block` as well.
@@ -167,12 +167,12 @@ my_block.add_callback(my_callback)
 Here's how things fit together:
 - Main container block: `CollectionViewBlock` (inline) / `CollectionViewPageBlock` (full-page)
     - `Collection` (holds the schema, and is parent to the database rows themselves)
-        - `CollectionRowBlock`
-        - `CollectionRowBlock`
+        - `CollectionBlock`
+        - `CollectionBlock`
         - ... (more database records)
     - `CollectionView` (holds filters/sort/etc about each specific view)
 
-Note: For convenience, we automatically map the database "columns" (aka properties), based on the schema defined in the `Collection`, into getter/setter attributes on the `CollectionRowBlock` instances. The attribute name is a "slugified" version of the name of the column. So if you have a column named "Estimated value", you can read and write it via `myrowblock.estimated_value`. Some basic validation may be conducted, and it will be converted into the appropriate internal format. For columns of type "Person", we expect a `User` instance, or a list of them, and for a "Relation" we expect a singular/list of instances of a subclass of `Block`.
+Note: For convenience, we automatically map the database "columns" (aka properties), based on the schema defined in the `Collection`, into getter/setter attributes on the `CollectionBlock` instances. The attribute name is a "slugified" version of the name of the column. So if you have a column named "Estimated value", you can read and write it via `myrowblock.estimated_value`. Some basic validation may be conducted, and it will be converted into the appropriate internal format. For columns of type "Person", we expect a `NotionUser` instance, or a list of them, and for a "Relation" we expect a singular/list of instances of a subclass of `Block`.
 
 **Note**: all `search` and `query` functionality in the following is currently inactive, pending https://github.com/jamalex/notion-py/pull/95. 
 
@@ -267,15 +267,3 @@ We're a [small nonprofit](https://learningequality.org/) with [global impact](ht
 
 - [md2notion](https://github.com/Cobertos/md2notion): import Markdown files to Notion
 - [notion-export-ics](https://github.com/evertheylen/notion-export-ics): Export Notion Databases to ICS calendar files
-
-# TODO
-
-* Cloning pages hierarchically
-* Debounce cache-saving?
-* Support inline "user" and "page" links, and reminders, in markdown conversion
-* Utilities to support updating/creating collection schemas
-* Utilities to support updating/creating collection_view queries
-* Support for easily managing page permissions
-* Websocket support for live block cache updating
-* "Render full page to markdown" mode
-* "Import page from html" mode

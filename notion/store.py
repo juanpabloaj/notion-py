@@ -1,22 +1,21 @@
-import datetime
 import json
 import threading
 import uuid
 
-from collections import defaultdict
+from collections import defaultdict, Callable
 from copy import deepcopy
 from dictdiffer import diff
 from inspect import signature
-from threading import Lock
 from pathlib import Path
+from threading import Lock
 from tzlocal import get_localzone
 
-from .logger import logger
-from .settings import CACHE_DIR
-from .utils import extract_id
+from notion.logger import logger
+from notion.settings import NOTION_CACHE_DIR
+from notion.utils import extract_id
 
 
-class MissingClass(object):
+class MissingClass:
     def __bool__(self):
         return False
 
@@ -24,14 +23,12 @@ class MissingClass(object):
 Missing = MissingClass()
 
 
-class Callback(object):
-    def __init__(
-        self, callback, record, callback_id=None, extra_kwargs={}, watch_children=True
-    ):
+class Callback:
+    def __init__(self, callback: Callable, record, callback_id: str = None, **kwargs):
         self.callback = callback
         self.record = record
         self.callback_id = callback_id or str(uuid.uuid4())
-        self.extra_kwargs = extra_kwargs
+        self.extra_kwargs = kwargs
 
     def __call__(self, difference, old_val, new_val):
         kwargs = {}
@@ -90,10 +87,12 @@ class RecordStore(object):
     def _get(self, table, id):
         return self._values[table].get(id, Missing)
 
-    def add_callback(self, record, callback, callback_id=None, extra_kwargs={}):
-        assert callable(
-            callback
-        ), "The callback must be a 'callable' object, such as a function."
+    def add_callback(self, record, callback, callback_id=None, **extra_kwargs):
+        if not callable(callback):
+            raise ValueError(
+                f"The callback {callback} must be a 'callable' object, such as a function."
+            )
+
         self.remove_callbacks(record._table, record.id, callback_id)
         callback_obj = Callback(
             callback, record, callback_id=callback_id, extra_kwargs=extra_kwargs
@@ -113,9 +112,7 @@ class RecordStore(object):
             callbacks.remove(callback_or_callback_id_prefix)
 
     def _get_cache_path(self, attribute):
-        return str(
-            Path(CACHE_DIR).joinpath("{}{}.json".format(self._cache_key, attribute))
-        )
+        return str(Path(NOTION_CACHE_DIR) / f"{self._cache_key}{attribute}.json")
 
     def _load_cache(self, attributes=("_values", "_role", "_collection_row_ids")):
         if not self._cache_key:
@@ -174,17 +171,17 @@ class RecordStore(object):
         self.get(table, id, force_refresh=force_refresh)
         return self._role[table].get(id, None)
 
-    def get(self, table, id, force_refresh=False):
-        id = extract_id(id)
+    def get(self, table, url_or_id, force_refresh=False):
+        rid = extract_id(url_or_id)
         # look up the record in the current local dataset
-        result = self._get(table, id)
+        result = self._get(table, rid)
         # if it's not found, try refreshing the record from the server
         if result is Missing or force_refresh:
             if table == "block":
-                self.call_load_page_chunk(id)
+                self.call_load_page_chunk(rid)
             else:
-                self.call_get_record_values(**{table: id})
-            result = self._get(table, id)
+                self.call_get_record_values(**{table: rid})
+            result = self._get(table, rid)
         return result if result is not Missing else None
 
     def _update_record(self, table, id, value=None, role=None):
@@ -288,6 +285,7 @@ class RecordStore(object):
         self.store_recordmap(recordmap)
 
     def store_recordmap(self, recordmap):
+        # TODO: accept response dict and fetch key recordMap here?
         for table, records in recordmap.items():
             for id, record in records.items():
                 self._update_record(
@@ -296,21 +294,28 @@ class RecordStore(object):
 
     def call_query_collection(
         self,
-        collection_id,
-        collection_view_id,
-        search="",
-        type="table",
-        aggregate=[],
-        aggregations=[],
-        filter={},
-        sort=[],
-        calendar_by="",
-        group_by="",
+        collection_id: str,
+        collection_view_id: str,
+        search: str = "",
+        type: str = "table",
+        aggregate: list = None,
+        aggregations: list = None,
+        filter: dict = None,
+        sort: list = [],
+        calendar_by: str = "",
+        group_by: str = "",
     ):
+        # TODO: No idea what this is.
 
-        assert not (
-            aggregate and aggregations
-        ), "Use only one of `aggregate` or `aggregations` (old vs new format)"
+        if aggregate and aggregations:
+            raise ValueError(
+                "Use only one of `aggregate` or `aggregations` (old vs new format)"
+            )
+
+        aggregate = aggregate or []
+        aggregations = aggregations or []
+        filter = filter or {}
+        sort = sort or []
 
         # convert singletons into lists if needed
         if isinstance(aggregate, dict):
@@ -354,8 +359,10 @@ class RecordStore(object):
 
     def run_local_operations(self, operations):
         """
-        Called to simulate the results of running the operations on the server, to keep the record store in sync
-        even when we haven't completed a refresh (or we did a refresh but the database hadn't actually updated yet...)
+        Called to simulate the results of running the operations
+        on the server, to keep the record store in sync even when
+        we haven't completed a refresh (or we did a refresh but
+        the database hadn't actually updated yet...)
         """
         for operation in operations:
             self.run_local_operation(**operation)
@@ -368,18 +375,20 @@ class RecordStore(object):
 
         ref = new_val
 
-        # loop and descend down the path until it's consumed, or if we're doing a "set", there's one key left
+        # loop and descend down the path until it's consumed,
+        # or if we're doing a "set", there's one key left
         while (len(path) > 1) or (path and command != "set"):
             comp = path.pop(0)
             if comp not in ref:
                 ref[comp] = [] if "list" in command else {}
             ref = ref[comp]
 
+        if not isinstance(ref, dict) and not isinstance(ref, list):
+            raise ValueError("IDK ev what")
+
         if command == "update":
-            assert isinstance(ref, dict)
             ref.update(args)
         elif command == "set":
-            assert isinstance(ref, dict)
             if path:
                 ref[path[0]] = args
             else:
@@ -387,13 +396,11 @@ class RecordStore(object):
                 ref.clear()
                 ref.update(args)
         elif command == "listAfter":
-            assert isinstance(ref, list)
             if "after" in args:
                 ref.insert(ref.index(args["after"]) + 1, args["id"])
             else:
                 ref.append(args["id"])
         elif command == "listBefore":
-            assert isinstance(ref, list)
             if "before" in args:
                 ref.insert(ref.index(args["before"]), args["id"])
             else:

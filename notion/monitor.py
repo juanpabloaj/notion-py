@@ -1,241 +1,286 @@
 import json
 import re
-import requests
 import threading
 import time
 import uuid
-
+from typing import Set
 from collections import defaultdict
-from inspect import signature
+from urllib.parse import urlencode
+
 from requests import HTTPError
 
-from .collection import Collection
-from .logger import logger
-from .records import Record
+from notion.record import Record
+from notion.settings import MESSAGE_STORE_URL
+
+# from notion.collection.basic import Collection
+from notion.logger import logger
 
 
-class Monitor(object):
+class Monitor:
+    """
+    Monitor class for automatic data polling of records.
+    """
 
     thread = None
 
-    def __init__(self, client, root_url="https://msgstore.www.notion.so/primus/"):
+    def __init__(self, client, root_url: str = MESSAGE_STORE_URL):
+        """
+        Create Monitor object.
+
+        Parameters
+        ----------
+        client : NotionClient
+            Client to use.
+        root_url : str, optional
+            Root URL for polling message stats.
+            Defaults to valid notion message store URL.
+        """
+        self.sid = None
         self.client = client
-        self.session_id = str(uuid.uuid4())
         self.root_url = root_url
+        self.session_id = str(uuid.uuid4())
         self._subscriptions = set()
         self.initialize()
 
-    def _decode_numbered_json_thing(self, thing):
+    @staticmethod
+    def _encode_numbered_json_thing(data: list) -> bytes:
+        results = ""
+        for obj in data:
+            msg = str(len(obj)) + json.dumps(obj, separators=(",", ":"))
+            msg = f"{len(msg)}:{msg}"
+            results += msg
 
+        return results.encode()
+
+    def _decode_numbered_json_thing(self, thing: bytes) -> list:
         thing = thing.decode().strip()
 
-        for ping in re.findall('\d+:\d+"primus::ping::\d+"', thing):
+        for ping in re.findall(r'\d+:\d+"primus::ping::\d+"', thing):
             logger.debug("Received ping: {}".format(ping))
             self.post_data(ping.replace("::ping::", "::pong::"))
 
         results = []
-        for blob in re.findall("\d+:\d+(\{.*?\})(?=\d|$)", thing):
+        for blob in re.findall(r"\d+:\d+({.+})(?=\d|$)", thing):
             results.append(json.loads(blob))
+
         if thing and not results and "::ping::" not in thing:
             logger.debug("Could not parse monitoring response: {}".format(thing))
+
         return results
 
-    def _encode_numbered_json_thing(self, data):
-        assert isinstance(data, list)
-        results = ""
-        for obj in data:
-            msg = str(len(obj)) + json.dumps(obj, separators=(",", ":"))
-            msg = "{}:{}".format(len(msg), msg)
-            results += msg
-        return results.encode()
+    def _refresh_updated_records(self, events: list):
+        records_to_refresh = defaultdict(list)
+        versions_pattern = re.compile(r"versions/([^:]+):(.+)")
+        collection_pattern = re.compile(r"collection/(.+)")
+
+        events = filter(lambda e: isinstance(e, dict), events)
+        events = filter(lambda e: e.get("type", "") == "notification", events)
+
+        for event in events:
+            logger.debug(f"Received the following event from notion: {event}")
+            key = event.get("key")
+
+            # TODO: rewrite below if cases to something simpler
+            if key.startswith("versions/"):
+                match = versions_pattern.match(key)
+                if not match:
+                    continue
+
+                record_id, record_table = match.groups()
+                old = self.client._store.get_current_version(record_table, record_id)
+                new = event["value"]
+
+                name = f"{record_table}/{record_id}"
+                if new > old:
+                    logger.debug(
+                        (
+                            f"Record {name} has changed; refreshing to update"
+                            f"from version {old} to version {new}"
+                        )
+                    )
+                    records_to_refresh[record_table].append(record_id)
+                else:
+                    logger.debug(
+                        (
+                            f"Record {name} already at version {old}"
+                            f"not trying to update to version {new}"
+                        )
+                    )
+
+            if key.startswith("collection/"):
+
+                match = collection_pattern.match(key)
+                if not match:
+                    continue
+
+                collection_id = match.groups()[0]
+
+                self.client.refresh_collection_rows(collection_id)
+                row_ids = self.client._store.get_collection_rows(collection_id)
+
+                logger.debug(
+                    (
+                        f"Something inside collection {collection_id} has changed"
+                        f"refreshing all {row_ids} rows inside it"
+                    )
+                )
+
+                records_to_refresh["block"] += row_ids
+
+        self.client.refresh_records(**records_to_refresh)
+
+    def url(self, **kwargs) -> str:
+        kwargs["sessionId"] = kwargs.get("sessionId", self.session_id)
+        kwargs["transport"] = kwargs.get("transport", "polling")
+        return f"{self.root_url}?{urlencode(kwargs)}"
 
     def initialize(self):
-
+        """
+        Initialize the monitoring session.
+        """
         logger.debug("Initializing new monitoring session.")
 
-        response = self.client.session.get(
-            "{}?sessionId={}&EIO=3&transport=polling".format(
-                self.root_url, self.session_id
-            )
-        )
+        content = self.client.session.get(self.url(EIO=3)).content
+        # TODO: add error handling
 
-        self.sid = self._decode_numbered_json_thing(response.content)[0]["sid"]
-
-        logger.debug("New monitoring session ID is: {}".format(self.sid))
+        self.sid = self._decode_numbered_json_thing(content)[0]["sid"]
+        logger.debug(f"New monitoring session ID is: {self.sid}")
 
         # resubscribe to any existing subscriptions if we're reconnecting
-        old_subscriptions, self._subscriptions = self._subscriptions, set()
+        old_subscriptions = self._subscriptions
+        self._subscriptions = set()
         self.subscribe(old_subscriptions)
 
-    def subscribe(self, records):
+    def subscribe(self, records: Set[Record]):
+        """
+        Subscribe to changes of passed records.
 
-        if isinstance(records, set):
-            records = list(records)
+        Arguments
+        ---------
+        records : set of Record
+            Set of `Record` objects to subscribe to.
+        """
 
-        if not isinstance(records, list):
-            records = [records]
+        if isinstance(records, list):
+            records = set(records)
+
+        # TODO: how to describe that you can also pass
+        #       record explicitly or should we block it?
+        if not isinstance(records, set):
+            records = {records}
 
         sub_data = []
 
-        for record in records:
+        for record in records.difference(self._subscriptions):
+            key = f"{record.id}:{record._table}"
+            logger.debug(f"Subscribing new record: {key}")
 
-            if record not in self._subscriptions:
+            # save it in case we're disconnected
+            self._subscriptions.add(record)
 
-                logger.debug(
-                    "Subscribing new record to the monitoring watchlist: {}/{}".format(
-                        record._table, record.id
-                    )
-                )
+            # TODO: hide that dict generation in Record class
+            sub_data.append(
+                {
+                    "type": "/api/v1/registerSubscription",
+                    "requestId": str(uuid.uuid4()),
+                    "key": f"versions/{key}",
+                    "version": record.get("version", -1),
+                }
+            )
 
-                # add the record to the list of records to restore if we're disconnected
-                self._subscriptions.add(record)
+            # if it's a collection, subscribe to changes to its children too
 
-                # subscribe to changes to the record itself
-                sub_data.append(
-                    {
-                        "type": "/api/v1/registerSubscription",
-                        "requestId": str(uuid.uuid4()),
-                        "key": "versions/{}:{}".format(record.id, record._table),
-                        "version": record.get("version", -1),
-                    }
-                )
+            # TODO: fix imports
+            # if isinstance(record, Collection):
+            #    sub_data.append(
+            #        {
+            #            "type": "/api/v1/registerSubscription",
+            #            "requestId": str(uuid.uuid4()),
+            #            "key": "collection/{}".format(record.id),
+            #            "version": -1,
+            #        }
+            #    )
 
-                # if it's a collection, subscribe to changes to its children too
-                if isinstance(record, Collection):
-                    sub_data.append(
-                        {
-                            "type": "/api/v1/registerSubscription",
-                            "requestId": str(uuid.uuid4()),
-                            "key": "collection/{}".format(record.id),
-                            "version": -1,
-                        }
-                    )
+        self.post_data(self._encode_numbered_json_thing(sub_data))
 
-        data = self._encode_numbered_json_thing(sub_data)
+    def post_data(self, data: bytes):
+        """
+        Send monitoring requests to Notion.
 
-        self.post_data(data)
-
-    def post_data(self, data):
-
+        Arguments
+        ---------
+        data : bytes
+            Form encoded request data.
+        """
         if not data:
             return
 
-        logger.debug("Posting monitoring data: {}".format(data))
-
-        self.client.session.post(
-            "{}?sessionId={}&transport=polling&sid={}".format(
-                self.root_url, self.session_id, self.sid
-            ),
-            data=data,
-        )
+        logger.debug(f"Posting monitoring data: {data}")
+        self.client.session.post(self.url(sid=self.sid), data=data)
 
     def poll(self, retries=10):
+        """
+        Poll for changes.
+
+        Arguments
+        ---------
+        retries : int, optional
+            Number of times to retry request if it fails.
+            Defaults to 10.
+
+        Raises
+        ------
+        HTTPError
+            When GET request fails for `retries` times.
+        """
         logger.debug("Starting new long-poll request")
-        try:
-            response = self.client.session.get(
-                "{}?sessionId={}&EIO=3&transport=polling&sid={}".format(
-                    self.root_url, self.session_id, self.sid
-                )
-            )
-            response.raise_for_status()
-        except HTTPError as e:
+
+        while retries:
             try:
-                message = "{} / {}".format(response.content, e)
-            except:
-                message = "{}".format(e)
-            logger.warn(
-                "Problem with submitting polling request: {} (will retry {} more times)".format(
-                    message, retries
+                response = self.client.session.get(self.url(EIO=3, sid=self.sid))
+                response.raise_for_status()
+                retries -= 1
+
+            except HTTPError as e:
+                try:
+                    message = f"{response.content} / {e}"
+                except AttributeError:
+                    message = str(e)
+
+                logger.warn(
+                    f"Problem with submitting poll request: {message} (will retry {retries} more times)"
                 )
-            )
-            time.sleep(0.1)
-            if retries <= 0:
-                raise
-            if retries <= 5:
-                logger.error(
-                    "Persistent error submitting polling request: {} (will retry {} more times)".format(
-                        message, retries
+
+                time.sleep(0.1)
+                if retries <= 0:
+                    raise
+
+                if retries <= 5:
+                    logger.error(
+                        f"Persistent error submitting poll request: {message} (will retry {retries} more times)"
                     )
-                )
-                # if we're close to giving up, also try reinitializing the session
-                self.initialize()
-            self.poll(retries=retries - 1)
+                    # if we're close to giving up, also try reinitializing the session
+                    self.initialize()
 
         self._refresh_updated_records(
             self._decode_numbered_json_thing(response.content)
         )
 
-    def _refresh_updated_records(self, events):
-
-        records_to_refresh = defaultdict(list)
-
-        for event in events:
-
-            logger.debug(
-                "Received the following event from the remote server: {}".format(event)
-            )
-
-            if not isinstance(event, dict):
-                continue
-
-            if event.get("type", "") == "notification":
-
-                key = event.get("key")
-
-                if key.startswith("versions/"):
-
-                    match = re.match("versions/([^\:]+):(.+)", key)
-                    if not match:
-                        continue
-
-                    record_id, record_table = match.groups()
-
-                    local_version = self.client._store.get_current_version(
-                        record_table, record_id
-                    )
-                    if event["value"] > local_version:
-                        logger.debug(
-                            "Record {}/{} has changed; refreshing to update from version {} to version {}".format(
-                                record_table, record_id, local_version, event["value"]
-                            )
-                        )
-                        records_to_refresh[record_table].append(record_id)
-                    else:
-                        logger.debug(
-                            "Record {}/{} already at version {}, not trying to update to version {}".format(
-                                record_table, record_id, local_version, event["value"]
-                            )
-                        )
-
-                if key.startswith("collection/"):
-
-                    match = re.match("collection/(.+)", key)
-                    if not match:
-                        continue
-
-                    collection_id = match.groups()[0]
-
-                    self.client.refresh_collection_rows(collection_id)
-                    row_ids = self.client._store.get_collection_rows(collection_id)
-
-                    logger.debug(
-                        "Something inside collection {} has changed; refreshing all {} rows inside it".format(
-                            collection_id, len(row_ids)
-                        )
-                    )
-
-                    records_to_refresh["block"] += row_ids
-
-        self.client.refresh_records(**records_to_refresh)
-
     def poll_async(self):
         if self.thread:
             # Already polling async; no need to have two threads
             return
+
+        logger.debug("Starting new thread for async polling")
         self.thread = threading.Thread(target=self.poll_forever, daemon=True)
         self.thread.start()
 
     def poll_forever(self):
+        """
+        Call `poll()` in never-ending loop with small time intervals in-between.
+
+        This function is blocking, it never returns!
+        """
         while True:
             try:
                 self.poll()

@@ -1,6 +1,6 @@
-import commonmark
 import re
 
+from commonmark import Parser
 from commonmark.dump import prepare
 
 
@@ -74,22 +74,23 @@ _NOTION_TO_MARKDOWN_MAPPER = {"i": "☃", "b": "☃☃", "s": "~~", "c": "`"}
 FORMAT_PRECEDENCE = ["s", "b", "i", "a", "c"]
 
 
-def _extract_text_and_format_from_ast(item):
+def _extract_text_and_format_from_ast(item: dict):
+    type = item["type"]
 
-    if item["type"] == "html_inline":
+    if type == "html_inline":
         if item.get("literal", "") == "<s>":
             return "", ("s",)
 
-    if item["type"] == "emph":
+    if type == "emph":
         return item.get("literal", ""), ("i",)
 
-    if item["type"] == "strong":
+    if type == "strong":
         return item.get("literal", ""), ("b",)
 
-    if item["type"] == "code":
+    if type == "code":
         return item.get("literal", ""), ("c",)
 
-    if item["type"] == "link":
+    if type == "link":
         if "destination" in item:
             return item.get("literal", ""), ("a", item["destination"])
 
@@ -109,10 +110,31 @@ def _get_format(notion_segment, as_set=False):
             return notion_segment[1]
 
 
-def markdown_to_notion(markdown):
+def _cleanup_dashes(thing):
+    regex_pattern = re.compile("⸻|%E2%B8%BB")
+    if type(thing) is list:
+        for counter, value in enumerate(thing):
+            thing[counter] = _cleanup_dashes(value)
+    elif type(thing) is str:
+        return regex_pattern.sub("-", thing)
 
-    if not isinstance(markdown, str):
-        markdown = str(markdown)
+    return thing
+
+
+def markdown_to_notion(markdown: str) -> list:
+    """
+    Convert Markdown formatted string to Notion.
+
+    Arguments
+    ---------
+    markdown : str
+        Text to convert.
+
+    Returns
+    -------
+    list of Block
+        Blocks converted from input.
+    """
 
     # commonmark doesn't support strikethrough, so we need to handle it ourselves
     while markdown.count("~~") >= 2:
@@ -122,7 +144,7 @@ def markdown_to_notion(markdown):
     # we don't want to touch dashes, so temporarily replace them here
     markdown = markdown.replace("-", "⸻")
 
-    parser = commonmark.Parser()
+    parser = Parser()
     ast = prepare(parser.parse(markdown))
 
     format = set()
@@ -177,25 +199,32 @@ def markdown_to_notion(markdown):
         elif item[0]:
             consolidated.append(item)
 
-    return cleanup_dashes(consolidated)
+    return _cleanup_dashes(consolidated)
 
 
-def cleanup_dashes(thing):
-    regex_pattern = re.compile("⸻|%E2%B8%BB")
-    if type(thing) is list:
-        for counter, value in enumerate(thing):
-            thing[counter] = cleanup_dashes(value)
-    elif type(thing) is str:
-        return regex_pattern.sub("-", thing)
+# TODO: Rewrite this function, it has to be shorter!
+def notion_to_markdown(notion: list) -> str:
+    """
+    Convert list of notion blocks to markdown text.
 
-    return thing
+    Arguments
+    ---------
+    notion : list
+        List of Notion Blocks
+        TODO: is it true?
 
+    Raises
+    ------
+    Exception
+        When it's unable to extract text.
 
-def notion_to_markdown(notion):
-
+    Returns
+    -------
+    str
+        Converted Markdown text.
+    """
+    pattern = re.compile(r"^(?P<leading>\s*)(?P<stripped>(\s|.)*?)(?P<trailing>\s*)$")
     markdown_chunks = []
-
-    use_underscores = True
 
     for item in notion or []:
 
@@ -204,9 +233,8 @@ def notion_to_markdown(notion):
         text = item[0]
         format = item[1] if len(item) == 2 else []
 
-        match = re.match(
-            "^(?P<leading>\s*)(?P<stripped>(\s|.)*?)(?P<trailing>\s*)$", text
-        )
+        match = pattern.match(text)
+
         if not match:
             raise Exception("Unable to extract text from: %r" % text)
 
@@ -289,8 +317,24 @@ def notion_to_markdown(notion):
     return full_markdown
 
 
-def notion_to_plaintext(notion, client=None):
+def notion_to_plaintext(notion: list, client=None):
+    """
+    Convert list of notion blocks to plain text.
 
+    Arguments
+    ---------
+    notion : list
+        List of Notion Blocks
+        TODO: is it true?
+    client : NotionClient, optional
+        Used for getting blocks, if passed.
+        Defaults to None.
+
+    Returns
+    -------
+    str
+        Converted text.
+    """
     plaintext = ""
 
     for item in notion or []:
@@ -319,6 +363,20 @@ def notion_to_plaintext(notion, client=None):
     return plaintext
 
 
-def plaintext_to_notion(plaintext):
+# TODO: does it even work?
+def plaintext_to_notion(plaintext: str) -> list:
+    """
+    Convert plain text to list of notion blocks.
 
+    Arguments
+    ---------
+    plaintext : str
+        Text to be converted.
+
+    Returns
+    -------
+    list
+        List.
+        # TODO: um, no?
+    """
     return [[plaintext]]

@@ -1,11 +1,15 @@
-from .logger import logger
-from .maps import property_map, field_map
-from .records import Record
+from notion.maps import field_map
+from notion.record import Record
 
 
-class Space(Record):
+class NotionSpace(Record):
+    """
+    Class representing notion's Space - user workplace.
+    """
 
+    _type = "space"
     _table = "space"
+    _str_fields = "name", "domain"
 
     child_list_key = "pages"
 
@@ -25,26 +29,37 @@ class Space(Record):
         self._client.refresh_records(notion_user=user_ids)
         return [self._client.get_user(user_id) for user_id in user_ids]
 
-    def _str_fields(self):
-        return super()._str_fields() + ["name", "domain"]
+    def add_page(self, title, type: str = "page", shared: bool = False):
+        """
+        Create new page.
 
-    def add_page(self, title, type="page", shared=False):
-        assert type in [
-            "page",
-            "collection_view_page",
-        ], "'type' must be one of 'page' or 'collection_view_page'"
+        Arguments
+        ---------
+        title : str
+            Title for the newly created page.
+
+        type : str, optional
+            Type of the page. Must be one of "page" or "collection_view_page".
+            Defaults to "page".
+
+        shared : bool, optional
+            Whether or not the page should be shared (public).
+            TODO: is it true?
+            Defaults to False.
+        """
+        perms = [
+            {
+                "role": "editor",
+                "type": "user_permission",
+                "user_id": self._client.current_user.id,
+            }
+        ]
+
         if shared:
-            permissions = [{"role": "editor", "type": "space_permission"}]
-        else:
-            permissions = [
-                {
-                    "role": "editor",
-                    "type": "user_permission",
-                    "user_id": self._client.current_user.id,
-                }
-            ]
+            perms = [{"role": "editor", "type": "space_permission"}]
+
         page_id = self._client.create_record(
-            "block", self, type=type, permissions=permissions
+            "block", self, type=type, permissions=perms
         )
         page = self._client.get_block(page_id)
         page.title = title

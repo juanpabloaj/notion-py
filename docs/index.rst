@@ -2,12 +2,11 @@ Welcome to notion-py's documentation!
 =====================================
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
-   :hidden:
+   :maxdepth: 4
 
-   modules <source/modules.rst>
-   notion <source/notion.rst>
+   contents <contents.rst>
+   modules <api/modules.rst>
+   notion <api/notion.rst>
 
 
 * :ref:`genindex`

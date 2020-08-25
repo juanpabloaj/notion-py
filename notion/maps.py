@@ -1,37 +1,91 @@
 from inspect import signature
+from typing import Union, Iterable, Callable
 
-from .logger import logger
-from .markdown import markdown_to_notion, notion_to_markdown
+from notion.markdown import (
+    markdown_to_notion,
+    notion_to_markdown,
+    plaintext_to_notion,
+    notion_to_plaintext,
+)
+from notion.utils import add_signed_prefix_as_needed, remove_signed_prefix_as_needed
 
 
-class mapper(property):
-    def __init__(self, path, python_to_api, api_to_python, *args, **kwargs):
+class Mapper(property):
+    """
+    Mapper for converting to/from notion and Python.
+    """
+
+    def __init__(
+        self,
+        path: Union[Iterable[str], str],
+        python_to_api: Callable,
+        api_to_python: Callable,
+        *args,
+        **kwargs
+    ):
+        """
+        Create mapper object and fill its fields.
+
+
+        Arguments
+        ---------
+        path : Iterable of str or str
+            Path can either be a top-level field-name,
+            a list that specifies the key names to traverse,
+            or a dot-delimited string representing the same traversal.
+
+        python_to_api : Callable
+            Function that converts values as given in the Python layer
+            into the internal API representation.
+
+        api_to_python : Callable
+            Function that converts what is received from the API
+            into an internal representation to be returned to the Python layer.
+        """
         self.python_to_api = python_to_api
         self.api_to_python = api_to_python
-        self.path = (
-            ".".join(map(str, path))
-            if isinstance(path, list) or isinstance(path, tuple)
-            else path
-        )
+        self.path = ".".join(map(str, path)) if isinstance(path, Iterable) else path
         super().__init__(*args, **kwargs)
 
 
-def field_map(path, python_to_api=lambda x: x, api_to_python=lambda x: x):
+def field_map(
+    path: Union[Iterable[str], str],
+    python_to_api: Callable = lambda x: x,
+    api_to_python: Callable = lambda x: x,
+) -> Mapper:
     """
-    Returns a property that maps a Block attribute onto a field in the API data structures.
-    
-    - `path` can either be a top-level field-name, a list that specifies the key names to traverse,
-      or a dot-delimited string representing the same traversal.
+    Return a property that maps a Block attribute
+    onto a field in the API data structures.
 
-    - `python_to_api` is a function that converts values as given in the Python layer into the
-      internal representation to be sent along in the API request.
 
-    - `api_to_python` is a function that converts what is received from the API into an internal
-      representation to be returned to the Python layer.
+    Arguments
+    ---------
+    path : Iterable of str or str
+        Path can either be a top-level field-name,
+        a list that specifies the key names to traverse,
+        or a dot-delimited string representing the same traversal.
+
+    python_to_api : Callable, optional
+        Function that converts values as given in the Python layer into
+        the internal API representation.
+        Defaults to proxy lambda x: x.
+
+    api_to_python : Callable, optional
+        Function that converts what is received from the API into
+        an internal representation to be returned to the Python layer.
+        Defaults to proxy lambda x: x.
+
+
+    Returns
+    -------
+    Mapper
+        Property map.
+
+
+    See Also
+    --------
+        property_map
     """
-
-    if isinstance(path, str):
-        path = path.split(".")
 
     def fget(self):
         kwargs = {}
@@ -45,24 +99,132 @@ def field_map(path, python_to_api=lambda x: x, api_to_python=lambda x: x):
             kwargs["client"] = self._client
         self.set(path, python_to_api(value, **kwargs))
 
-    return mapper(
-        fget=fget,
-        fset=fset,
+    return Mapper(
         path=path,
         python_to_api=python_to_api,
         api_to_python=api_to_python,
+        fget=fget,
+        fset=fset,
+    )
+
+
+def prefixed_field_map(name: str):
+    """
+    Arguments
+    ---------
+    name : str
+        Name of the property.
+
+
+    Returns
+    -------
+    Mapper
+        Field map.
+
+
+    See Also
+    --------
+        field_map
+    """
+    return field_map(
+        name,
+        api_to_python=add_signed_prefix_as_needed,
+        python_to_api=remove_signed_prefix_as_needed,
+    )
+
+
+def nested_field_map(name: str) -> Mapper:
+    """
+    Arguments
+    ---------
+    name : str
+        Name of the property.
+
+
+    Returns
+    -------
+    Mapper
+        Field map.
+
+
+    See Also
+    --------
+        field_map
+    """
+    return field_map(
+        name, python_to_api=lambda x: [[x]], api_to_python=lambda x: x[0][0],
+    )
+
+
+def markdown_field_map(name: str) -> Mapper:
+    """
+    Arguments
+    ---------
+    name : Iterable of str
+        Name of the property.
+
+
+    Returns
+    -------
+    Mapper
+        Field map.
+
+
+    See Also
+    --------
+        field_map
+    """
+    return field_map(
+        name, api_to_python=notion_to_markdown, python_to_api=markdown_to_notion
     )
 
 
 def property_map(
-    name, python_to_api=lambda x: x, api_to_python=lambda x: x, markdown=True
-):
+    name: str,
+    python_to_api: Callable = lambda x: x,
+    api_to_python: Callable = lambda x: x,
+    markdown: bool = True,
+) -> Mapper:
     """
-    Similar to `field_map`, except it works specifically with the data under the "properties" field
-    in the API's block table, and just takes a single name to specify which subkey to reference.
-    Also, these properties all seem to use a special "embedded list" format that breaks the text
-    up into a sequence of chunks and associated format metadata. If `markdown` is True, we convert
-    this representation into commonmark-compatible markdown, and back again when saving.
+    Similar to `field_map`, except it works specifically with
+    the data under the "properties" field in the API block table,
+    and just takes a single name to specify which subkey to reference.
+
+    Also, these properties all seem to use a special "embedded list"
+    format that breaks the text up into a sequence of chunks and associated
+    format metadata.
+
+
+    Arguments
+    ---------
+    name : str
+        Name of the property.
+
+    python_to_api : Callable, optional
+        Function that converts values as given in the Python layer into
+        the internal API representation.
+        Defaults to proxy lambda x: x.
+
+    api_to_python : Callable, optional
+        Function that converts what is received from the API into
+        an internal representation to be returned to the Python layer.
+        Defaults to proxy lambda x: x.
+
+    markdown : bool, optional
+        Whether or not to convert the representation into commonmark-compatible
+        markdown text upon reading from API and again when saving.
+        Defaults to True.
+
+
+    Returns
+    -------
+    Mapper
+        Property map.
+
+
+    See Also
+    --------
+        field_map
     """
 
     def py2api(x, client=None):
@@ -83,13 +245,108 @@ def property_map(
             kwargs["client"] = client
         return api_to_python(x, **kwargs)
 
+    # TODO: rewrite so that name can be only str, not list
     return field_map(["properties", name], python_to_api=py2api, api_to_python=api2py)
 
 
-def joint_map(*mappings):
+def prefixed_property_map(name: str) -> Mapper:
     """
-    Combine multiple `field_map` and `property_map` instances together to map an attribute to multiple API fields.
-    Note: when "getting", the first one will be used. When "setting", they will all be set in parallel.
+    Arguments
+    ---------
+    name : str
+        Name of the property.
+
+
+    Returns
+    -------
+    Mapper
+        Property map.
+
+
+    See Also
+    --------
+        property_map
+    """
+    return property_map(
+        name,
+        api_to_python=add_signed_prefix_as_needed,
+        python_to_api=remove_signed_prefix_as_needed,
+    )
+
+
+def plaintext_property_map(name: str) -> Mapper:
+    """
+    Arguments
+    ---------
+    name : str
+        Name of the property.
+
+
+    Returns
+    -------
+    Mapper
+        Property map.
+
+
+    See Also
+    --------
+        property_map
+    """
+    return property_map(
+        name,
+        python_to_api=plaintext_to_notion,
+        api_to_python=notion_to_plaintext,
+        markdown=False,
+    )
+
+
+def boolean_property_map(name: str) -> Mapper:
+    """
+    Arguments
+    ---------
+    name : str
+        Name of the property.
+
+
+    Returns
+    -------
+    Mapper
+        Property map.
+
+
+    See Also
+    --------
+        property_map
+    """
+    return property_map(
+        name,
+        python_to_api=lambda x: "Yes" if x else "No",
+        api_to_python=lambda x: x == "Yes",
+    )
+
+
+def joint_map(*mappings: Mapper) -> property:
+    """
+    Combine multiple `field_map` and `property_map` instances
+    together to map an attribute to multiple API fields.
+
+    When "getting", the first one will be used.
+    When "setting", they will all be set in parallel.
+
+
+    Arguments
+    ---------
+    mappings : Iterable of Mapper
+
+
+    Returns
+    -------
+    property
+        Joint property.
+
+    See Also
+    --------
+        property_map
     """
 
     def fget(self):

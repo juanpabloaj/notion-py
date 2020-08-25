@@ -42,7 +42,7 @@ test:  ## test code with unit tests
 
 
 try-test:  ## try test code with unit tests
-	python -m pytest --pdb tests/
+	python -m pytest -x --pdb tests/
 
 
 smoke-test:  ## test smoke code with unit tests
@@ -50,7 +50,7 @@ smoke-test:  ## test smoke code with unit tests
 
 
 try-smoke-test:  ## try smoke test code with unit tests
-	python -m pytest --pdb smoke_tests/
+	python -m pytest -x --pdb smoke_tests/
 
 
 docs:  ## generate documentation in HTML
