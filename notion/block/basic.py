@@ -52,11 +52,9 @@ class CodeBlock(BasicBlock):
     wrap = field_map("format.code_wrap")
 
 
-class PageLinkBlock(BasicBlock):
+class LinkToPageBlock(BasicBlock):
 
     _type = "link_to_page"
-
-    # TODO: find other fields and map them here
 
 
 class EquationBlock(BasicBlock):

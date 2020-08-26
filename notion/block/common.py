@@ -28,8 +28,6 @@ class Block(Record):
     Data can be refreshed from the server using the `refresh` method.
     """
 
-    # TODO: looks very important, notion uses it for something
-    #       rename it to `kind` maybe? `_table` does not make any sense
     _table = "block"
     _type = "block"
     _str_fields = "type"

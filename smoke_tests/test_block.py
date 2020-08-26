@@ -7,6 +7,7 @@ from notion.block.basic import (
     HeaderBlock,
     NumberedListBlock,
     PageBlock,
+    LinkToPageBlock,
     QuoteBlock,
     SubHeaderBlock,
     SubSubHeaderBlock,
@@ -293,6 +294,12 @@ def test_page_block(notion):
     assert_block_attributes(
         block, title="numbered_list", cover=cover, color="blue", icon="✔️"
     )
+
+
+def test_link_to_page_block(notion):
+    block = notion.root_page.children.add_new(LinkToPageBlock)
+    assert_block_is_okay(**locals(), type="link_to_page")
+    assert_block_attributes(block, title="")
 
 
 def test_quote_block(notion):
