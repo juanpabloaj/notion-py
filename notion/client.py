@@ -1,18 +1,22 @@
 import hashlib
 import json
-import re
-import uuid
-import time
 import os
+import re
+import time
+import uuid
 from typing import Union, Optional
-
-from requests import Session, get, Response
-from requests.cookies import cookiejar_from_dict
 from urllib.parse import urljoin
-from requests.adapters import HTTPAdapter
-from requests.packages.urllib3.util.retry import Retry
 from zipfile import ZipFile
 
+from requests import Session, get, Response
+from requests.adapters import HTTPAdapter
+from requests.cookies import cookiejar_from_dict
+from requests.packages.urllib3.util.retry import Retry
+
+from notion.block.basic import Block
+from notion.block.collection.basic import CollectionBlock, TemplateBlock
+from notion.block.collection.view import CollectionView
+from notion.block.types import all_block_types, collection_view_types
 from notion.logger import logger
 from notion.monitor import Monitor
 from notion.operations import operation_update_last_edited, build_operation
@@ -22,11 +26,6 @@ from notion.space import NotionSpace
 from notion.store import RecordStore
 from notion.user import NotionUser
 from notion.utils import extract_id, now
-from notion.block.common import Block
-from notion.block.collection import TemplateBlock
-from notion.collection.view import CollectionView
-from notion.collection.basic import Collection, CollectionBlock
-from notion.block.types import all_block_types, collection_block_types
 
 
 class NotionApiError(Exception):
@@ -113,6 +112,7 @@ class NotionClient:
         """
         Create NotionClient object and fill its fields.
 
+
         Arguments
         ---------
         token_v2 : str, optional
@@ -159,11 +159,13 @@ class NotionClient:
         """
         Helper method for creating a session object for API requests.
 
+
         Arguments
         ---------
         token_v2 : str, optional
             Token to use for creating User session.
             Defaults to empty string.
+
 
         Returns
         -------
@@ -203,10 +205,12 @@ class NotionClient:
         the task finishes. So, we need to save the taskId
         into a variable. This is a helper function to do that.
 
+
         Arguments
         ---------
         response : Response
             Response object after successful API call.
+
 
         Returns
         -------
@@ -219,6 +223,7 @@ class NotionClient:
     def _download_url(url: str, save_path: str, chunk_size: int = 128):
         """
         Download the zip file and save it to a file.
+
 
         Arguments
         ---------
@@ -233,6 +238,7 @@ class NotionClient:
             If set to 0 then the data will be read as it arrives
             in whatever the size the chunks are received.
             Defaults to 128.
+
 
         See Also
         --------
@@ -249,6 +255,7 @@ class NotionClient:
     def _unzip_file(file_name: str, delete: bool = True):
         """
         Helper method to unzip the zipped file.
+
 
         Arguments
         ---------
@@ -269,6 +276,7 @@ class NotionClient:
         """
         Reload information about a Notion User.
 
+
         Returns
         -------
         dict
@@ -284,19 +292,22 @@ class NotionClient:
         """
         Get list of top level pages defined in Notion Workspace.
 
+
         Returns
         -------
         list of Block
             Top level pages.
         """
-        records = self._update_user_info()
-        return [self.get_block(bid) for bid in records["block"].keys()]
+        blocks = self._update_user_info()["block"].keys()
+        blocks = [self.get_block(bid) for bid in blocks]
+        return blocks
 
     def get_record_data(
         self, table: str, url_or_id: str, force_refresh: bool = False
     ) -> dict:
         """
         Get record data.
+
 
         Arguments
         ---------
@@ -309,6 +320,7 @@ class NotionClient:
         force_refresh : bool, optional
             Whether or not to force a refresh of data.
             Defaults to False.
+
 
         Returns
         -------
@@ -324,6 +336,7 @@ class NotionClient:
         Retrieve an instance of a subclass of Block that maps to
         the block/page identified by the URL or ID passed in.
 
+
         Arguments
         ---------
         url_or_id : str
@@ -332,6 +345,7 @@ class NotionClient:
         force_refresh : bool, optional
             Whether or not to force a refresh of data.
             Defaults to False.
+
 
         Returns
         -------
@@ -348,6 +362,7 @@ class NotionClient:
             if block.get("is_template"):
                 return TemplateBlock(client=self, block_id=block_id)
             else:
+                # TODO: this class does not inherit from Block, what's the difference?
                 return CollectionBlock(client=self, block_id=block_id)
 
         klass = all_block_types().get(block.get("type", ""), Block)
@@ -358,6 +373,7 @@ class NotionClient:
         Retrieve an instance of Collection that maps to
         the collection identified by the ID passed in.
 
+
         Arguments
         ---------
         collection_id : str
@@ -366,6 +382,7 @@ class NotionClient:
         force_refresh : bool, optional
             Whether or not to force a refresh of data.
             Defaults to False.
+
 
         Returns
         -------
@@ -377,12 +394,15 @@ class NotionClient:
         )
 
         if record_data:
-            return Collection(self, collection_id)
+            return CollectionBlock(self, collection_id)
 
         return None
 
     def get_collection_view(
-        self, url_or_id: str, collection: Collection = None, force_refresh: bool = False
+        self,
+        url_or_id: str,
+        collection: CollectionBlock = None,
+        force_refresh: bool = False,
     ) -> CollectionView:
         """
         Retrieve an instance of a subclass of CollectionView
@@ -390,6 +410,7 @@ class NotionClient:
 
         The `url_or_id` argument can either be the URL for a database page,
         or the ID of a collection_view (in which case you must also pass the collection)
+
 
         Arguments
         ---------
@@ -403,10 +424,12 @@ class NotionClient:
             Whether or not to force a refresh of data.
             Defaults to False.
 
+
         Raises
         ------
         InvalidCollectionViewUrl
             When passed in URL is invalid.
+
 
         Returns
         -------
@@ -417,7 +440,9 @@ class NotionClient:
         if url_or_id.startswith("http"):
             match = re.search(r"([a-f0-9]{32})\?v=([a-f0-9]{32})", url_or_id)
             if not match:
-                raise InvalidCollectionViewUrl()
+                raise InvalidCollectionViewUrl(
+                    f"Couldn't find valid ID in URL {url_or_id}"
+                )
 
             block_id, view_id = match.groups()
             collection = self.get_block(
@@ -426,7 +451,7 @@ class NotionClient:
         else:
             view_id = url_or_id
 
-            if collection is not None:
+            if collection is None:
                 raise Exception(
                     "If 'url_or_id' is an ID (not a URL), you must also pass the 'collection'"
                 )
@@ -436,7 +461,7 @@ class NotionClient:
         )
 
         if view:
-            view_type = collection_block_types().get(
+            view_type = collection_view_types().get(
                 view.get("type", ""), CollectionView
             )
             return view_type(self, view_id, collection=collection)
@@ -448,6 +473,7 @@ class NotionClient:
         Retrieve an instance of User that maps to
         the notion_user identified by the ID passed in.
 
+
         Arguments
         ---------
         user_id : str
@@ -456,6 +482,7 @@ class NotionClient:
         force_refresh : bool, optional
             Whether or not to force a refresh of data.
             Defaults to False.
+
 
         Returns
         -------
@@ -470,6 +497,7 @@ class NotionClient:
         Retrieve an instance of Space that maps to
         the space identified by the ID passed in.
 
+
         Arguments
         ---------
         space_id : str
@@ -478,6 +506,7 @@ class NotionClient:
         force_refresh : bool, optional
             Whether or not to force a refresh of data.
             Defaults to False.
+
 
         Returns
         -------
@@ -508,6 +537,7 @@ class NotionClient:
         """
         Refresh collection rows.
 
+
         Arguments
         ---------
         collection_id : str
@@ -535,6 +565,7 @@ class NotionClient:
         TODO: Add support for downloading a list of blocks.
 
         TODO: Review this code. Does it suck? Error handling?
+
 
         Arguments
         ---------
@@ -565,6 +596,7 @@ class NotionClient:
         locale : str, optional
             Locale for the export.
             Defaults to "en".
+
 
         Returns
         -------
@@ -617,6 +649,7 @@ class NotionClient:
         All API requests on Notion.so are done as POSTs,
         except the websocket communications.
 
+
         Arguments
         ---------
         endpoint : str
@@ -625,6 +658,7 @@ class NotionClient:
         data : dict
             Data to send.
             Defaults to empty dict.
+
 
         Raises
         ------
@@ -636,6 +670,7 @@ class NotionClient:
 
         NotionException
             When POST fails in a different way.
+
 
         Returns
         -------
@@ -668,6 +703,7 @@ class NotionClient:
     ):
         """
         Submit list of operations in atomic transaction block.
+
 
         Arguments
         ---------
@@ -708,6 +744,7 @@ class NotionClient:
         to `submit_transaction` and sends them as one
         big transaction when the context manager exits.
 
+
         Returns
         -------
         Transaction
@@ -727,6 +764,7 @@ class NotionClient:
         """
         Search for pages with parent.
 
+
         Arguments
         ---------
         parent_id : str
@@ -739,6 +777,7 @@ class NotionClient:
         limit : int, optional
             Max number of pages to return.
             Defaults to 10 000.
+
 
         Returns
         -------
@@ -759,6 +798,7 @@ class NotionClient:
         """
         Search for blocks.
 
+
         Arguments
         ---------
         search : str
@@ -767,6 +807,7 @@ class NotionClient:
         limit : int, optional
             Max number of blocks to return.
             Defaults to 25.
+
 
         Returns
         -------
@@ -787,6 +828,7 @@ class NotionClient:
         """
         Create new record.
 
+
         Arguments
         ---------
         table : str
@@ -794,6 +836,7 @@ class NotionClient:
 
         parent : Record
             Parent for the newly created record.
+
 
         Returns
         -------

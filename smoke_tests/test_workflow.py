@@ -1,48 +1,60 @@
+import time
+import uuid
 from datetime import datetime
 
-from notion.client import *
+from notion.block.basic import (
+    TextBlock,
+    ToDoBlock,
+    HeaderBlock,
+    SubHeaderBlock,
+    PageBlock,
+    QuoteBlock,
+    BulletedListBlock,
+    CalloutBlock,
+    ColumnBlock,
+    ColumnListBlock,
+)
+from notion.block.collection.media import CollectionViewBlock
+from notion.block.upload import VideoBlock
 
 
-def run_live_smoke_test(token_v2, parent_page_url_or_id):
-
-    client = NotionClient(token_v2=token_v2)
-
-    parent_page = client.get_block(parent_page_url_or_id)
-
+def test_workflow_1(notion):
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    parent_page = notion.root_page
     page = parent_page.children.add_new(
         PageBlock,
-        title="Smoke test at {}".format(datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+        title=f"Smoke test at {now}",
     )
 
-    print("Created base smoke test page at:", page.get_browseable_url())
-
+    title = "Some formatting: *italic*, **bold**, ***both***!"
     col_list = page.children.add_new(ColumnListBlock)
     col1 = col_list.children.add_new(ColumnBlock)
-    col2 = col_list.children.add_new(ColumnBlock)
-    col1kid = col1.children.add_new(
-        TextBlock, title="Some formatting: *italic*, **bold**, ***both***!"
-    )
-    assert (
-        col1kid.title.replace("_", "*")
-        == "Some formatting: *italic*, **bold**, ***both***!"
-    )
+    col1kid = col1.children.add_new(TextBlock, title=title)
+
+    assert col_list in page.children
+    assert col1kid.title.replace("_", "*") == title
     assert col1kid.title_plaintext == "Some formatting: italic, bold, both!"
-    col2.children.add_new(TodoBlock, title="I should be unchecked")
-    col2.children.add_new(TodoBlock, title="I should be checked", checked=True)
+
+    col2 = col_list.children.add_new(ColumnBlock)
+    col2.children.add_new(ToDoBlock, title="I should be unchecked")
+    col2.children.add_new(ToDoBlock, title="I should be checked", checked=True)
+
+    assert col2.children[0].checked is False
+    assert col2.children[1].checked is True
 
     page.children.add_new(HeaderBlock, title="The finest music:")
     video = page.children.add_new(VideoBlock, width=100)
     video.set_source_url("https://www.youtube.com/watch?v=oHg5SJYRHA0")
 
-    assert video in page.children
-    assert col_list in page.children
     assert video in page.children.filter(VideoBlock)
     assert col_list not in page.children.filter(VideoBlock)
 
-    page.children.add_new(SubheaderBlock, title="A link back to where I came from:")
+    page.children.add_new(SubHeaderBlock, title="A link back to where I came from:")
+
     alias = page.children.add_alias(parent_page)
     assert alias.is_alias
     assert not page.is_alias
+
     page.children.add_new(
         QuoteBlock,
         title="Clicking [here]({}) should take you to the same place...".format(
@@ -57,26 +69,28 @@ def run_live_smoke_test(token_v2, parent_page_url_or_id):
         repr(child)
 
     page.children.add_new(
-        SubheaderBlock, title="The order of the following should be alphabetical:"
+        SubHeaderBlock, title="The order of the following should be alphabetical:"
     )
 
-    B = page.children.add_new(BulletedListBlock, title="B")
-    D = page.children.add_new(BulletedListBlock, title="D")
-    C2 = page.children.add_new(BulletedListBlock, title="C2")
-    C1 = page.children.add_new(BulletedListBlock, title="C1")
-    C = page.children.add_new(BulletedListBlock, title="C")
-    A = page.children.add_new(BulletedListBlock, title="A")
+    b = page.children.add_new(BulletedListBlock, title="B")
+    d = page.children.add_new(BulletedListBlock, title="D")
+    c2 = page.children.add_new(BulletedListBlock, title="C2")
+    c1 = page.children.add_new(BulletedListBlock, title="C1")
+    c = page.children.add_new(BulletedListBlock, title="C")
+    a = page.children.add_new(BulletedListBlock, title="A")
 
-    D.move_to(C, "after")
-    A.move_to(B, "before")
-    C2.move_to(C)
-    C1.move_to(C, "first-child")
+    d.move_to(c, "after")
+    a.move_to(b, "before")
+    c2.move_to(c)
+    c1.move_to(c, "first-child")
 
     page.children.add_new(CalloutBlock, title="I am a callout", icon="🤞")
 
     cvb = page.children.add_new(CollectionViewBlock)
-    cvb.collection = client.get_collection(
-        client.create_record("collection", parent=cvb, schema=get_collection_schema())
+    cvb.collection = notion.client.get_collection(
+        notion.client.create_record(
+            "collection", parent=cvb, schema=get_collection_schema()
+        )
     )
     cvb.title = "My data!"
     view = cvb.views.add_new(view_type="table")
@@ -105,8 +119,10 @@ def run_live_smoke_test(token_v2, parent_page_url_or_id):
     row1.category = "B"
 
     # add another row
-    row2 = cvb.collection.add_row(person=client.current_user, title="Metallic penguins")
-    assert row2.person == [client.current_user]
+    row2 = cvb.collection.add_row(
+        person=notion.client.current_user, title="Metallic penguins"
+    )
+    assert row2.person == [notion.client.current_user]
     assert row2.name == "Metallic penguins"
     row2.check_yo_self = False
     row2.estimated_value = 22
@@ -130,10 +146,10 @@ def run_live_smoke_test(token_v2, parent_page_url_or_id):
     assert row2 in cvb.collection.get_rows(search="penguins")
 
     # search the entire space
-    assert row1 in client.search_blocks(search=special_code)
-    assert row1 not in client.search_blocks(search="penguins")
-    assert row2 not in client.search_blocks(search=special_code)
-    assert row2 in client.search_blocks(search="penguins")
+    assert row1 in notion.client.search_blocks(search=special_code)
+    assert row1 not in notion.client.search_blocks(search="penguins")
+    assert row2 not in notion.client.search_blocks(search=special_code)
+    assert row2 in notion.client.search_blocks(search="penguins")
 
     # Run an "aggregation" query
     aggregations = [
@@ -149,7 +165,10 @@ def run_live_smoke_test(token_v2, parent_page_url_or_id):
                 "filter": {
                     "value": {
                         "type": "exact",
-                        "value": {"table": "notion_user", "id": client.current_user.id},
+                        "value": {
+                            "table": "notion_user",
+                            "id": notion.client.current_user.id,
+                        },
                     },
                     "operator": "person_does_not_contain",
                 },
@@ -168,41 +187,25 @@ def run_live_smoke_test(token_v2, parent_page_url_or_id):
     assert row1 == result[1]
     assert row2 == result[0]
 
-    print(
-        "Check it out and make sure it looks good, then press any key here to delete it..."
-    )
-    input()
-
-    _delete_page_fully(page)
-
-
-def _delete_page_fully(page):
-
     id = page.id
-
     parent_page = page.parent
 
-    assert page.get("alive") == True
+    assert page.get("alive") is True
     assert page in parent_page.children
     page.remove()
-    assert page.get("alive") == False
+    assert page.get("alive") is False
     assert page not in parent_page.children
 
     assert (
         page.space_info
-    ), "Page {} was fully deleted prematurely, as we can't get space info about it anymore".format(
-        id
-    )
+    ), f"Page {id} was fully deleted prematurely, as we can't get space info about it anymore"
 
     page.remove(permanently=True)
-
     time.sleep(1)
 
     assert (
         not page.space_info
-    ), "Page {} was not really fully deleted, as we can still get space info about it".format(
-        id
-    )
+    ), f"Page {id} was not really fully deleted, as we can still get space info about it"
 
 
 def get_collection_schema():

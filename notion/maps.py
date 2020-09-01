@@ -152,7 +152,9 @@ def nested_field_map(name: str) -> Mapper:
         field_map
     """
     return field_map(
-        name, python_to_api=lambda x: [[x]], api_to_python=lambda x: x[0][0],
+        name,
+        python_to_api=lambda x: [[x]],
+        api_to_python=lambda x: x[0][0],
     )
 
 
@@ -343,6 +345,7 @@ def joint_map(*mappings: Mapper) -> property:
     -------
     property
         Joint property.
+
 
     See Also
     --------

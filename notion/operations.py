@@ -13,6 +13,7 @@ def build_operation(
     """
     Build sequence of operations for submitTransaction endpoint.
 
+
     Arguments
     ---------
     id : str
@@ -20,6 +21,7 @@ def build_operation(
 
     path : list of str or str
         Key for the object.
+
 
     args
         Arguments?
@@ -31,6 +33,7 @@ def build_operation(
     table : str, optional
         Table argument for endpoint.
         Defaults to "block".
+
 
     Returns
     -------
@@ -51,6 +54,7 @@ def operation_update_last_edited(user_id, block_id) -> dict:
     includes an operation to update the "last edited" fields,
     so we want to send those too, for consistency.
 
+
     Arguments
     ---------
     user_id : str
@@ -58,6 +62,7 @@ def operation_update_last_edited(user_id, block_id) -> dict:
 
     block_id : str
         Block ID
+
 
     Returns
     -------

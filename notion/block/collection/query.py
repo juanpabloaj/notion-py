@@ -1,13 +1,15 @@
-from notion.block.collection import CollectionBlock
-from notion.block.common import Block
-from notion.collection.common import _normalize_query_data, _normalize_prop_name
+from notion.block.basic import Block
+from notion.block.collection.basic import CollectionViewBlock
+from notion.block.collection.common import _normalize_query_data, _normalize_prop_name
 from notion.utils import extract_id
-
-
-QUERY_RESULT_TYPES = {}
+from notion.block.types import collection_query_result_types
 
 
 class CollectionQuery:
+    """
+    Collection Query.
+    """
+
     def __init__(
         self,
         collection,
@@ -21,6 +23,7 @@ class CollectionQuery:
         calendar_by="",
         group_by="",
     ):
+        # TODO: replace all these arguments with something sane
         if aggregate and aggregations:
             raise ValueError(
                 "Use only one of `aggregate` or `aggregations` (old vs new format)"
@@ -38,9 +41,20 @@ class CollectionQuery:
         self.group_by = _normalize_prop_name(group_by, collection)
         self._client = collection._client
 
-    def execute(self):
+    def execute(self) -> "CollectionQueryResult":
+        """
+        Execute the query.
 
-        result_class = QUERY_RESULT_TYPES.get(self.type, CollectionQueryResult)
+
+        Returns
+        -------
+        CollectionQueryResult
+            Result of the query.
+        """
+
+        result_class = collection_query_result_types().get(
+            self.type, CollectionQueryResult
+        )
 
         return result_class(
             self.collection,
@@ -61,11 +75,14 @@ class CollectionQuery:
 
 
 class CollectionQueryResult:
-    def __init__(self, collection, result, query):
-        self._table = self.__class__.__name__.replace("QueryResult", "").lower()
+    """
+    Collection Query Result.
+    """
 
+    _type = ""
+
+    def __init__(self, collection, result, query: CollectionQuery):
         self._block_ids = self._get_block_ids(result)
-
         self.collection = collection
         self.query = query
         self.aggregates = result.get("aggregationResults", [])
@@ -77,7 +94,7 @@ class CollectionQueryResult:
         return result["blockIds"]
 
     def _get_block(self, id):
-        block = CollectionBlock(self.collection._client, id)
+        block = CollectionViewBlock(self.collection._client, id)
         # TODO: wtf? pass it as argument?
         block.__dict__["collection"] = self.collection
         return block
@@ -108,6 +125,7 @@ class CollectionQueryResult:
         return iter(self._get_block(bid) for bid in self._block_ids)
 
     def __reversed__(self):
+        # TODO: Unexpected type(s): (Iterator) Possible types: (Reversible) (Sequence)
         return reversed(iter(self))
 
     def __contains__(self, item):

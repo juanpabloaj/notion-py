@@ -11,12 +11,15 @@ class Record:
     """
     Basic collection of information about a notion-like block.
 
+
     Attributes
     ----------
     child_list_key
         If a subclass has a list of ids that should be update when
         child records are removed, it should specify the key here.
     """
+
+    _str_fields = "id"
 
     # TODO: rename this variable to something hidden
     child_list_key = None
@@ -30,10 +33,6 @@ class Record:
         self._client = client
         self._id = extract_id(block_id)
 
-        # name = self.__class__.__name__
-        # *name, _ = name.split("Block")
-        # self._type = "_".join(name).lower()
-
         if self._client._monitor is not None:
             self._client._monitor.subscribe(self)
 
@@ -41,39 +40,25 @@ class Record:
         """
         Return human friendly string representation of the object.
 
+
         Returns
         -------
         str
-            Human friendly string with details about the object.
+            String with details about the object.
         """
-        fields = ["id"]
+        fields = []
 
-        if hasattr(self, "_str_fields"):
-            str_fields = getattr(self, "_str_fields")
+        for klass in self.__class__.__mro__[:-1]:
+            for f in self._get_str_fields(klass):
+                r = repr(getattr(self, f))
+                fields.append(f"{f}={r}")
 
-            if isinstance(str_fields, Iterable):
-                fields.append(str_fields)
-
-            elif isinstance(str_fields, Callable):
-                fields.append(str_fields())
-
-            elif isinstance(str_fields, str):
-                fields.append(str_fields)
-
-            else:
-                raise ValueError(
-                    f"{self.__class__.__name__}._str_fields is not an iterable or callable or a str"
-                )
-
-        def fmt(f):
-            r = repr(getattr(self, f))
-            return f"{f}={r}"
-
-        return ", ".join(fmt(f) for f in fields)
+        return ", ".join(fields)
 
     def __repr__(self) -> str:
         """
         Return computer friendly string representation of the object.
+
 
         Returns
         -------
@@ -86,6 +71,7 @@ class Record:
         """
         Unique value computed based on the ID.
 
+
         Returns
         -------
         int
@@ -96,6 +82,7 @@ class Record:
     def __eq__(self, other) -> bool:
         """
         Compare the objects by their ID.
+
 
         Returns
         -------
@@ -108,6 +95,7 @@ class Record:
         """
         Compare the objects by their ID.
 
+
         Returns
         -------
         bool
@@ -115,9 +103,28 @@ class Record:
         """
         return self.id != other.id
 
+    @staticmethod
+    def _get_str_fields(klass) -> list:
+        if not hasattr(klass, "_str_fields"):
+            return []
+
+        str_fields = getattr(klass, "_str_fields")
+
+        if isinstance(str_fields, str):
+            return [str_fields]
+
+        elif isinstance(str_fields, Iterable):
+            return list(str_fields)
+
+        else:
+            raise ValueError(
+                f"{klass.__name__}._str_fields is not an iterable or a str"
+            )
+
     def _convert_diff_to_changelist(self, difference: list, old_val, new_val) -> list:
         """
         Convert difference between field values into a changelist.
+
 
         Arguments
         ---------
@@ -129,6 +136,7 @@ class Record:
 
         new_val
             New value.
+
 
         Returns
         -------
@@ -157,11 +165,13 @@ class Record:
         """
         Get record data.
 
+
         Arguments
         ---------
         force_refresh : bool, optional
             Whether or not to force object refresh.
             Defaults to False.
+
 
         Returns
         -------
@@ -181,6 +191,7 @@ class Record:
         """
         Get the URL.
 
+
         Returns
         -------
         str
@@ -194,6 +205,7 @@ class Record:
         """
         Get the Record ID.
 
+
         Returns
         -------
         str
@@ -205,6 +217,7 @@ class Record:
     def role(self) -> str:
         """
         Get the Record role.
+
 
         Returns
         -------
@@ -219,6 +232,7 @@ class Record:
         """
         Add callback function to listeners.
 
+
         Arguments
         ---------
         cb : Callable
@@ -231,6 +245,7 @@ class Record:
         extra_kwargs : dict, optional
             Additional information that should be passed to callback when executed.
             Defaults to empty dict.
+
 
         Returns
         -------
@@ -247,6 +262,7 @@ class Record:
         """
         Remove one or more callbacks based on their ID prefix.
 
+
         Arguments
         ---------
         cb_or_cb_id_prefix: Callback or str, optional
@@ -260,7 +276,9 @@ class Record:
             self._callbacks = []
         else:
             self._client._store.remove_callbacks(
-                self._table, self.id, callback_or_callback_id_prefix=cb_or_cb_id_prefix,
+                self._table,
+                self.id,
+                callback_or_callback_id_prefix=cb_or_cb_id_prefix,
             )
             if cb_or_cb_id_prefix in self._callbacks:
                 self._callbacks.remove(cb_or_cb_id_prefix)
@@ -273,6 +291,7 @@ class Record:
     ) -> Any:
         """
         Retrieve cached data for this record.
+
 
         Arguments
         ---------
@@ -287,6 +306,7 @@ class Record:
             If set to True, force refresh the data cache
             from the server before reading the values.
             Defaults to False.
+
 
         Returns
         -------
@@ -303,6 +323,7 @@ class Record:
         """
         Set a specific `value` under the specific `path`
         on the record's data structure on the server.
+
 
         Arguments
         ---------

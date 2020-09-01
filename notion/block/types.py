@@ -7,6 +7,7 @@ def get_blocks(file_name: str, suffix: str = "Block") -> dict:
 
     This function caches the results using `file_name` as a key.
 
+
     Arguments
     ---------
     file_name : str
@@ -41,41 +42,22 @@ def get_blocks(file_name: str, suffix: str = "Block") -> dict:
     return blocks
 
 
-def basic_block_types() -> dict:
-    return get_blocks("basic")
-
-
-def collection_block_types() -> dict:
-    return get_blocks("collection")
-
-
-def database_block_types() -> dict:
-    return get_blocks("database")
-
-
-def embed_block_types() -> dict:
-    return get_blocks("embed")
-
-
-def inline_block_types() -> dict:
-    return get_blocks("inline")
-
-
-def media_block_types() -> dict:
-    return get_blocks("media")
-
-
-def upload_block_types() -> dict:
-    return get_blocks("upload")
-
-
 def all_block_types() -> dict:
     return {
-        **basic_block_types(),
-        **collection_block_types(),
-        **database_block_types(),
-        **embed_block_types(),
-        **inline_block_types(),
-        **media_block_types(),
-        **upload_block_types(),
+        **get_blocks("basic"),
+        **get_blocks("database"),
+        **get_blocks("embed"),
+        **get_blocks("inline"),
+        **get_blocks("media"),
+        **get_blocks("upload"),
+        **get_blocks("collection.basic"),
+        **get_blocks("collection.media"),
     }
+
+
+def collection_view_types() -> dict:
+    return get_blocks("collection.view", "View")
+
+
+def collection_query_result_types() -> dict:
+    return get_blocks("collection.query", "QueryResult")

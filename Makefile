@@ -1,4 +1,4 @@
-.PHONY: help clean install dev-install self-install build format try-format test docs lock
+.PHONY: help clean install dev-install self-install build publish format try-format test docs lock
 
 
 help:  ## display this help
@@ -8,7 +8,8 @@ help:  ## display this help
 
 clean:  ## clean all temp files
 	rm -rf $$(sed '/# -/q' .gitignore | sed '/^\s*#/d ; /^\s*$$/d')
-	find . -name "*.pyc" -delete
+	find . -type f -name "*.pyc" -delete
+	find . -type d -name "__pycache__" -delete
 
 
 install:  ## install requirements
@@ -21,12 +22,17 @@ dev-install:  ## install dev requirements
 	python -m pip install -r dev-requirements.txt
 
 
-self-install:  ## self-install the package
+self-install:  ## install the package locally
 	python setup.py install
 
 
-build:  ## build wheel package
+build: ## build wheel package
 	python setup.py sdist bdist_wheel
+
+
+publish:  ## publish the package on PyPI
+	twine check dist/*
+	twine upload --skip-existing dist/*
 
 
 format:  ## format code with black

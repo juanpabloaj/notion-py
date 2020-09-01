@@ -16,7 +16,7 @@ jobs:
       - run: make dev-install
       - run: make build
 
-      - uses: pypa/gh-action-pypi-publish@master
-        with:
-          user: __token__
-          password: ${{ secrets.PYPI_SECRET_TOKEN }}
+      - run: make publish
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_SECRET_TOKEN }}

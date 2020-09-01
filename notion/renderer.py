@@ -1,15 +1,14 @@
 from typing import Iterable
 
 import mistletoe
-from mistletoe import block_token, span_token
-from mistletoe.html_renderer import HTMLRenderer as MistletoeHTMLRenderer
 import requests
 from dominate.tags import *
 from dominate.util import raw
-from dominate.dom_tag import dom_tag
+from mistletoe import block_token, span_token
+from mistletoe.html_renderer import HTMLRenderer as MistletoeHTMLRenderer
 
-from notion.block.common import Block
-from notion.collection.basic import Collection
+from notion.block.basic import Block
+from notion.block.collection.basic import CollectionBlock
 
 # This is the minimal css stylesheet to apply to get decent looking output.
 # It won't make it look exactly like Notion.so but will have the same basic structure.
@@ -108,7 +107,6 @@ class BaseHTMLRenderer:
         render_table_pages_after_table: bool = False,
     ):
         """
-
         Attributes
         ----------
         start_block : Block
@@ -247,7 +245,7 @@ class BaseHTMLRenderer:
         # TODO: I would use isinstance(xxx, CollectionBlock) here but it's buggy
         # https://github.com/jamalex/notion-py/issues/103
         if isinstance(
-            block.parent, Collection
+            block.parent, CollectionBlock
         ):  # If it's a child of a collection (CollectionBlock)
             if not self.render_table_pages_after_table:
                 return []

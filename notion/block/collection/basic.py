@@ -1,8 +1,13 @@
-from datetime import datetime
-from functools import cached_property
-from typing import Any
+from datetime import datetime, date
+from typing import Optional
 
-from notion.block.basic import PageBlock
+from notion.block.basic import PageBlock, Block
+from notion.block.children import Templates
+from notion.block.collection.common import NotionDate
+from notion.block.collection.media import CollectionViewBlock
+from notion.block.collection.query import CollectionQuery
+from notion.block.collection.view import CalendarView
+from notion.maps import markdown_field_map, field_map
 from notion.markdown import notion_to_markdown, markdown_to_notion
 from notion.operations import build_operation
 from notion.utils import (
@@ -12,44 +17,234 @@ from notion.utils import (
 )
 
 
-class CollectionBlock(PageBlock):
+class CollectionBlock(Block):
     """
-    Collection Row Block.
+    Collection Block.
     """
 
     _type = "collection"
+    _table = "collection"
+    _str_fields = "name"
 
-    def __dir__(self):
-        # TODO: what's that about?
-        # return self._get_property_slugs() + super().__dir__()
-        return self._get_property_slugs()
+    cover = field_map("cover")
+    name = markdown_field_map("name")
+    description = markdown_field_map("description")
 
-    def __getattr__(self, attname):
-        return self.get_property(attname)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._templates = None
 
-    def __setattr__(self, name: str, value: Any):
-        if name.startswith("_") or hasattr(self, name):
-            # we only allow setting of new non-property attributes that start with "_"
-            super().__setattr__(name, value)
+    @property
+    def templates(self) -> Templates:
+        if not self._templates:
+            template_ids = self.get("template_pages", [])
+            self._client.refresh_records(block=template_ids)
+            self._templates = Templates(parent=self)
+        return self._templates
 
-        elif slugify(name) in self._get_property_slugs():
-            self.set_property(slugify(name), value)
-
-        else:
-            raise AttributeError(f"Unknown property: '{name}'")
-
-    def _get_property_slugs(self) -> list:
+    def get_schema_properties(self) -> list:
         """
+        Fetch a flattened list of all properties in the collection's schema.
+
 
         Returns
         -------
         list
-            List of slugs.
+            All properties.
         """
+        properties = []
+        for block_id, item in self.get("schema").items():
+            slug = slugify(item["name"])
+            prop = {"id": block_id, "slug": slug, **item}
+            properties.append(prop)
+
+        return properties
+
+    def get_schema_property(self, identifier: str) -> Optional[dict]:
+        """
+        Look up a property in the collection's schema
+        by "property id" (generally a 4-char string),
+        or name (human-readable -- there may be duplicates
+        so we pick the first match we find).
+
+
+        Attributes
+        ----------
+        identifier : str
+            Value used for searching the prop.
+            Can be set to ID, slug or title (if property type is also title).
+
+
+        Returns
+        -------
+        dict, optional
+            Schema of the property if found, or None.
+        """
+        for prop in self.get_schema_properties():
+            if identifier == prop["id"] or slugify(identifier) == prop["slug"]:
+                return prop
+            if identifier == "title" and prop["type"] == "title":
+                return prop
+        return None
+
+    def add_row(self, update_views=True, **kwargs) -> "CollectionRowBlock":
+        """
+        Create a new empty CollectionRowBlock
+        under this collection, and return the instance.
+
+
+        Arguments
+        ---------
+        update_views : bool, optional
+            Whether or not to update the views after
+            adding the row to Collection.
+            Defaults to True.
+
+        kwargs : dict, optional
+            Additional pairs of keys and values set in
+            newly created CollectionRowBlock.
+            Defaults to empty dict()
+
+
+        Returns
+        -------
+        CollectionRowBlock
+            Added row.
+        """
+
+        row_id = self._client.create_record("block", self, type="page")
+        row = CollectionRowBlock(self._client, row_id)
+
+        with self._client.as_atomic_transaction():
+            for key, val in kwargs.items():
+                setattr(row, key, val)
+            if update_views:
+                # make sure the new record is inserted at the end of each view
+                for view in self.parent.views:
+                    if isinstance(view, CalendarView):
+                        continue
+                    view.set("page_sort", view.get("page_sort", []) + [row_id])
+
+        return row
+
+    @property
+    def parent(self):
+        """
+        Get parent block.
+
+
+        Returns
+        -------
+        Block
+            Parent block.
+        """
+        assert self.get("parent_table") == "block"
+        return self._client.get_block(self.get("parent_id"))
+
+    def _get_a_collection_view(self):
+        """
+        Get an arbitrary collection view for this collection, to allow querying.
+        """
+        parent = self.parent
+        assert isinstance(parent, CollectionViewBlock)
+        assert len(parent.views) > 0
+        return parent.views[0]
+
+    def query(self, **kwargs):
+        """
+        Run a query inline and return the results.
+
+
+        Returns
+        -------
+        CollectionQueryResult
+            Result of passed query.
+        """
+        return CollectionQuery(self, self._get_a_collection_view(), **kwargs).execute()
+
+    def get_rows(self, **kwargs):
+        return self.query(**kwargs)
+
+    def _convert_diff_to_changelist(self, difference, old_val, new_val):
+        changes = []
+        remaining = []
+
+        for operation, path, values in difference:
+            if path == "rows":
+                changes.append((operation, path, values))
+            else:
+                remaining.append((operation, path, values))
+
+        return changes + super()._convert_diff_to_changelist(
+            remaining, old_val, new_val
+        )
+
+
+class CollectionRowBlock(PageBlock):
+    """
+    Collection Row Block.
+    """
+
+    @property
+    def is_template(self):
+        return self.get("is_template")
+
+    @property
+    def collection(self):
+        return self._client.get_collection(self.get("parent_id"))
+
+    @property
+    def schema(self):
+        return [
+            prop
+            for prop in self.collection.get_schema_properties()
+            if prop["type"] not in ["formula", "rollup"]
+        ]
+
+    def __getattr__(self, attname):
+        return self.get_property(attname)
+
+    def __setattr__(self, attname, value):
+        if attname.startswith("_"):
+            # we only allow setting of new non-property attributes that start with "_"
+            super().__setattr__(attname, value)
+        elif attname in self._get_property_slugs():
+            self.set_property(attname, value)
+        elif slugify(attname) in self._get_property_slugs():
+            self.set_property(slugify(attname), value)
+        elif hasattr(self, attname):
+            super().__setattr__(attname, value)
+        else:
+            raise AttributeError("Unknown property: '{}'".format(attname))
+
+    def _get_property_slugs(self):
         slugs = [prop["slug"] for prop in self.schema]
         if "title" not in slugs:
             slugs.append("title")
         return slugs
+
+    def __dir__(self):
+        return self._get_property_slugs() + dir(super())
+
+    def get_property(self, identifier):
+        prop = self.collection.get_schema_property(identifier)
+        if prop is None:
+            raise AttributeError(
+                "Object does not have property '{}'".format(identifier)
+            )
+
+        val = self.get(["properties", prop["id"]])
+
+        return self._convert_notion_to_python(val, prop)
+
+    def get_mentioned_pages_on_property(self, identifier):
+        prop = self.collection.get_schema_property(identifier)
+        if prop is None:
+            raise AttributeError(
+                "Object does not have property '{}'".format(identifier)
+            )
+        val = self.get(["properties", prop["id"]])
+        return self._convert_mentioned_pages_to_python(val, prop)
 
     def _convert_diff_to_changelist(self, difference, old_val, new_val):
 
@@ -98,15 +293,24 @@ class CollectionBlock(PageBlock):
 
         return pages
 
-    def _convert_notion_to_python(self, val, prop: dict):
+    def _convert_notion_to_python(self, val, prop):
+        # TODO: REWRITE THIS MONSTROSITY !!
+
         if prop["type"] in ["title", "text"]:
             for i, part in enumerate(val):
                 if len(part) == 2:
                     for format in part[1]:
                         if "p" in format:
                             page = self._client.get_block(format[1])
-                            link = f"[{page.icon} {page.title}]({page.get_browseable_url()})"
-                            val[i] = [link]
+                            val[i] = [
+                                "["
+                                + page.icon
+                                + " "
+                                + page.title
+                                + "]("
+                                + page.get_browseable_url()
+                                + ")"
+                            ]
 
             val = notion_to_markdown(val) if val else ""
         if prop["type"] in ["number"]:
@@ -128,9 +332,8 @@ class CollectionBlock(PageBlock):
             )
         if prop["type"] in ["email", "phone_number", "url"]:
             val = val[0][0] if val else ""
-        # TODO: fix this case, NotionDate does not exist
-        # if prop["type"] in ["date"]:
-        #     val = NotionDate.from_notion(val)
+        if prop["type"] in ["date"]:
+            val = NotionDate.from_notion(val)
         if prop["type"] in ["file"]:
             val = (
                 [
@@ -162,7 +365,27 @@ class CollectionBlock(PageBlock):
 
         return val
 
+    def get_all_properties(self):
+        allprops = {}
+        for prop in self.schema:
+            propid = slugify(prop["name"])
+            allprops[propid] = self.get_property(propid)
+        return allprops
+
+    def set_property(self, identifier, val):
+
+        prop = self.collection.get_schema_property(identifier)
+        if prop is None:
+            raise AttributeError(
+                "Object does not have property '{}'".format(identifier)
+            )
+
+        path, val = self._convert_python_to_notion(val, prop, identifier=identifier)
+
+        self.set(path, val)
+
     def _convert_python_to_notion(self, val, prop, identifier="<unknown>"):
+        # TODO: rewrite this terrible mess
 
         if prop["type"] in ["title", "text"]:
             if not val:
@@ -218,13 +441,13 @@ class CollectionBlock(PageBlock):
             val = userlist[:-1]
         if prop["type"] in ["email", "phone_number", "url"]:
             val = [[val, [["a", val]]]]
-        # if prop["type"] in ["date"]:
-        #     if isinstance(val, date) or isinstance(val, datetime):
-        #         val = NotionDate(val)
-        #     if isinstance(val, NotionDate):
-        #         val = val.to_notion()
-        #     else:
-        #         val = []
+        if prop["type"] in ["date"]:
+            if isinstance(val, date) or isinstance(val, datetime):
+                val = NotionDate(val)
+            if isinstance(val, NotionDate):
+                val = val.to_notion()
+            else:
+                val = []
         if prop["type"] in ["file"]:
             filelist = []
             if not isinstance(val, list):
@@ -258,46 +481,6 @@ class CollectionBlock(PageBlock):
 
         return ["properties", prop["id"]], val
 
-    def get_all_properties(self):
-        allprops = {}
-        for prop in self.schema:
-            propid = slugify(prop["name"])
-            allprops[propid] = self.get_property(propid)
-        return allprops
-
-    def get_property(self, identifier):
-
-        prop = self.collection.get_schema_property(identifier)
-        if prop is None:
-            raise AttributeError(
-                "Object does not have property '{}'".format(identifier)
-            )
-
-        val = self.get(["properties", prop["id"]])
-
-        return self._convert_notion_to_python(val, prop)
-
-    def get_mentioned_pages_on_property(self, identifier):
-        prop = self.collection.get_schema_property(identifier)
-        if prop is None:
-            raise AttributeError(
-                "Object does not have property '{}'".format(identifier)
-            )
-        val = self.get(["properties", prop["id"]])
-        return self._convert_mentioned_pages_to_python(val, prop)
-
-    def set_property(self, identifier, val):
-
-        prop = self.collection.get_schema_property(identifier)
-        if prop is None:
-            raise AttributeError(
-                "Object does not have property '{}'".format(identifier)
-            )
-
-        path, val = self._convert_python_to_notion(val, prop, identifier=identifier)
-
-        self.set(path, val)
-
     def remove(self):
         # Mark the block as inactive
         self._client.submit_transaction(
@@ -306,27 +489,10 @@ class CollectionBlock(PageBlock):
             )
         )
 
-    @property
-    def is_template(self):
-        return self.get("is_template")
 
-    @cached_property
-    def collection(self):
-        return self._client.get_collection(self.get("parent_id"))
-
-    @property
-    def schema(self):
-        return [
-            prop
-            for prop in self.collection.get_schema_properties()
-            if prop["type"] not in ["formula", "rollup"]
-        ]
-
-
-class TemplateBlock(CollectionBlock):
+class TemplateBlock(CollectionRowBlock):
     """
     Template block.
-
     """
 
     _type = "template"

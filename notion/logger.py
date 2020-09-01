@@ -2,7 +2,6 @@ import logging
 
 from notion.settings import NOTION_LOG_FILE, NOTION_LOG_LEVEL
 
-
 logger = logging.getLogger("notion")
 
 

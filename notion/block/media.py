@@ -1,8 +1,12 @@
-from notion.block.common import Block
+from notion.block.basic import Block
 from notion.maps import property_map
 
 
 class MediaBlock(Block):
+    """
+    Media block.
+    """
+
     _type = "media"
     _str_fields = "caption"
 
@@ -10,5 +14,8 @@ class MediaBlock(Block):
 
 
 class BreadcrumbBlock(MediaBlock):
+    """
+    Breadcrumb block.
+    """
 
     _type = "breadcrumb"

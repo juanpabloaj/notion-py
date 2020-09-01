@@ -3,12 +3,15 @@ from mimetypes import guess_type
 
 import requests
 
-from notion.settings import S3_URL_PREFIX
 from notion.block.embed import EmbedBlock
 from notion.maps import field_map, property_map
+from notion.settings import S3_URL_PREFIX
 
 
 class UploadBlock(EmbedBlock):
+    """
+    Upload Block.
+    """
 
     file_id = field_map(["file_ids", 0])
 
@@ -47,6 +50,9 @@ class UploadBlock(EmbedBlock):
 
 
 class FileBlock(UploadBlock):
+    """
+    File Block.
+    """
 
     _type = "file"
 
@@ -55,20 +61,32 @@ class FileBlock(UploadBlock):
 
 
 class PdfBlock(UploadBlock):
+    """
+    PDF Block.
+    """
 
     _type = "pdf"
 
 
 class VideoBlock(UploadBlock):
+    """
+    Video Block.
+    """
 
     _type = "video"
 
 
 class AudioBlock(UploadBlock):
+    """
+    Audio Block.
+    """
 
     _type = "audio"
 
 
 class ImageBlock(UploadBlock):
+    """
+    Image Block.
+    """
 
     _type = "image"

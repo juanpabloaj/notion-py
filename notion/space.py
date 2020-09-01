@@ -1,3 +1,7 @@
+from typing import Union
+
+from notion.block.basic import PageBlock
+from notion.block.collection.media import CollectionViewPageBlock
 from notion.maps import field_map
 from notion.record import Record
 
@@ -29,9 +33,12 @@ class NotionSpace(Record):
         self._client.refresh_records(notion_user=user_ids)
         return [self._client.get_user(user_id) for user_id in user_ids]
 
-    def add_page(self, title, type: str = "page", shared: bool = False):
+    def add_page(
+        self, title, type: str = "page", shared: bool = False
+    ) -> Union[PageBlock, CollectionViewPageBlock]:
         """
         Create new page.
+
 
         Arguments
         ---------

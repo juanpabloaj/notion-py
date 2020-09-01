@@ -1,12 +1,11 @@
+import uuid
 from datetime import datetime
 from typing import Union, Iterable, Any
+from urllib.parse import urlparse, parse_qs, quote_plus, unquote_plus
 
 import requests
-import uuid
-
 from bs4 import BeautifulSoup
 from slugify import slugify as _dash_slugify
-from urllib.parse import urlparse, parse_qs, quote_plus, unquote_plus
 
 from notion.settings import (
     BASE_URL,
@@ -25,9 +24,10 @@ class InvalidNotionIdentifier(Exception):
     pass
 
 
-def now():
+def now() -> int:
     """
     Get UNIX-style time since epoch in seconds.
+
 
     Returns
     -------
@@ -46,15 +46,18 @@ def extract_id(url_or_id: str) -> str:
     on a block in a page), it will instead be the ID of that block.
     If it's already in ID format, it will be passed right through.
 
+
     Arguments
     ---------
     url_or_id : str
         Link to block or its ID.
 
+
     Raises
     ------
     InvalidNotionIdentifier
         Raised when `url_or_id` can't be converted to UUID.
+
 
     Returns
     -------
@@ -82,10 +85,12 @@ def get_embed_data(source_url: str) -> dict:
     """
     Get embed data.
 
+
     Arguments
     ---------
     source_url : str
         Source URL from which the embedded data will be extracted.
+
 
     Returns
     -------
@@ -99,10 +104,12 @@ def get_embed_link(source_url: str) -> str:
     """
     Get embed link.
 
+
     Arguments
     ---------
     source_url : str
         Source URL from which the embedded link will be extracted.
+
 
     Returns
     -------
@@ -115,6 +122,7 @@ def get_embed_link(source_url: str) -> str:
     if "html" not in data:
         return source_url
 
+    # TODO: replace BS4 with built in solution
     url = list(BeautifulSoup(data["html"], "html.parser").children)[0]["src"]
 
     return parse_qs(urlparse(url).query)["src"][0]
@@ -124,6 +132,7 @@ def add_signed_prefix_as_needed(url: str, client=None) -> str:
     """
     Utility function for adding signed prefix to URL.
 
+
     Arguments
     ---------
     url : str
@@ -132,6 +141,7 @@ def add_signed_prefix_as_needed(url: str, client=None) -> str:
     client : NotionClient, optional
         # TODO: Client object, used for ???
         Defaults to None.
+
 
     Returns
     -------
@@ -153,10 +163,12 @@ def remove_signed_prefix_as_needed(url: str) -> str:
     """
     Utility function for removing signed prefix from URL.
 
+
     Arguments
     ---------
     url : str
         URL to operate on.
+
 
     Returns
     -------
@@ -180,10 +192,12 @@ def slugify(original: str) -> str:
     """
     Convert text to computer-friendly simplified form.
 
+
     Arguments
     ---------
     original : str
         String to operate on.
+
 
     Returns
     -------
@@ -197,6 +211,7 @@ def get_by_path(path: Union[Iterable, str], obj: Any, default: Any = None):
     """
     Get value from object's key by dotted path (i.e. "path.to.some.key").
 
+
     Arguments
     ---------
     path : list or str
@@ -208,6 +223,7 @@ def get_by_path(path: Union[Iterable, str], obj: Any, default: Any = None):
     default: Any, optional
         Default value if key was invalid.
         Defaults to None.
+
 
     Returns
     -------

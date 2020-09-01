@@ -22,6 +22,7 @@ class NotionUser(Record):
         """
         Get full user name.
 
+
         Returns
         -------
         str
@@ -30,6 +31,3 @@ class NotionUser(Record):
         given = self.given_name or ""
         family = self.family_name or ""
         return f"{given} {family}".strip()
-
-    def _str_fields(self):
-        return super()._str_fields() + self.Meta.str_fields

@@ -3,17 +3,15 @@ import re
 import threading
 import time
 import uuid
-from typing import Set
 from collections import defaultdict
+from typing import Set
 from urllib.parse import urlencode
 
 from requests import HTTPError
 
+from notion.logger import logger
 from notion.record import Record
 from notion.settings import MESSAGE_STORE_URL
-
-# from notion.collection.basic import Collection
-from notion.logger import logger
 
 
 class Monitor:
@@ -27,10 +25,12 @@ class Monitor:
         """
         Create Monitor object.
 
-        Parameters
-        ----------
+
+        Arguments
+        ---------
         client : NotionClient
             Client to use.
+
         root_url : str, optional
             Root URL for polling message stats.
             Defaults to valid notion message store URL.
@@ -155,6 +155,7 @@ class Monitor:
         """
         Subscribe to changes of passed records.
 
+
         Arguments
         ---------
         records : set of Record
@@ -207,6 +208,7 @@ class Monitor:
         """
         Send monitoring requests to Notion.
 
+
         Arguments
         ---------
         data : bytes
@@ -218,15 +220,17 @@ class Monitor:
         logger.debug(f"Posting monitoring data: {data}")
         self.client.session.post(self.url(sid=self.sid), data=data)
 
-    def poll(self, retries=10):
+    def poll(self, retries: int = 10):
         """
         Poll for changes.
+
 
         Arguments
         ---------
         retries : int, optional
             Number of times to retry request if it fails.
             Defaults to 10.
+
 
         Raises
         ------

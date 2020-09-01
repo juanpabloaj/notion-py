@@ -3,7 +3,6 @@ import re
 from commonmark import Parser
 from commonmark.dump import prepare
 
-
 delimiters = {
     "!",
     '"',
@@ -125,10 +124,12 @@ def markdown_to_notion(markdown: str) -> list:
     """
     Convert Markdown formatted string to Notion.
 
+
     Arguments
     ---------
     markdown : str
         Text to convert.
+
 
     Returns
     -------
@@ -207,16 +208,19 @@ def notion_to_markdown(notion: list) -> str:
     """
     Convert list of notion blocks to markdown text.
 
+
     Arguments
     ---------
     notion : list
         List of Notion Blocks
         TODO: is it true?
 
+
     Raises
     ------
     Exception
         When it's unable to extract text.
+
 
     Returns
     -------
@@ -317,18 +321,21 @@ def notion_to_markdown(notion: list) -> str:
     return full_markdown
 
 
-def notion_to_plaintext(notion: list, client=None):
+def notion_to_plaintext(notion: list, client=None) -> str:
     """
     Convert list of notion blocks to plain text.
+
 
     Arguments
     ---------
     notion : list
         List of Notion Blocks
         TODO: is it true?
+
     client : NotionClient, optional
         Used for getting blocks, if passed.
         Defaults to None.
+
 
     Returns
     -------
@@ -363,20 +370,20 @@ def notion_to_plaintext(notion: list, client=None):
     return plaintext
 
 
-# TODO: does it even work?
 def plaintext_to_notion(plaintext: str) -> list:
     """
     Convert plain text to list of notion blocks.
+
 
     Arguments
     ---------
     plaintext : str
         Text to be converted.
 
+
     Returns
     -------
     list
-        List.
-        # TODO: um, no?
+        List with the converted plaintext.
     """
     return [[plaintext]]

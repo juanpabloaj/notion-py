@@ -9,6 +9,9 @@ from notion.utils import get_embed_link, remove_signed_prefix_as_needed
 
 
 class EmbedBlock(MediaBlock):
+    """
+    Embed Block.
+    """
 
     _type = "embed"
     _str_fields = "source"
@@ -27,6 +30,9 @@ class EmbedBlock(MediaBlock):
 
 
 class BookmarkBlock(EmbedBlock):
+    """
+    Bookmark Block.
+    """
 
     _type = "bookmark"
 
@@ -43,65 +49,104 @@ class BookmarkBlock(EmbedBlock):
 
 
 class AbstractBlock(EmbedBlock):
+    """
+    Abstract Block.
+    """
 
     _type = "abstract"
 
 
 class FramerBlock(EmbedBlock):
+    """
+    Framer Block.
+    """
 
     _type = "framer"
 
 
 class TweetBlock(EmbedBlock):
+    """
+    Tweet Block for twitter.com.
+    """
 
     _type = "tweet"
 
 
 class GistBlock(EmbedBlock):
+    """
+    Gist Block for gist.github.com.
+    """
 
     _type = "gist"
 
 
 class DriveBlock(EmbedBlock):
+    """
+    Drive Block for drive.google.com.
+    """
 
     _type = "drive"
 
 
 class FigmaBlock(EmbedBlock):
+    """
+    Figma Block for figma.io
+    """
 
     _type = "figma"
 
 
 class LoomBlock(EmbedBlock):
+    """
+    Loom Block for ???
+    """
 
     _type = "loom"
 
 
 class MiroBlock(EmbedBlock):
+    """
+    Miro Block for ???
+    """
 
     _type = "miro"
 
 
 class TypeformBlock(EmbedBlock):
+    """
+    Typeform Block for ???
+    """
 
     _type = "typeform"
 
 
 class CodepenBlock(EmbedBlock):
+    """
+    Codepen Block for codepen.io
+    """
 
     _type = "codepen"
 
 
 class MapsBlock(EmbedBlock):
+    """
+    Maps Block for maps.google.com.
+    """
 
     _type = "maps"
 
 
 class InvisionBlock(EmbedBlock):
+    """
+    Invision Block for ???
+    """
 
     _type = "invision"
 
 
 class WhimsicalBlock(EmbedBlock):
+    """
+    Whimsical Block for ???
+    """
 
     _type = "whimsical"

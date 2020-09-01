@@ -1,13 +1,13 @@
 import json
 import threading
 import uuid
-
 from collections import defaultdict, Callable
 from copy import deepcopy
-from dictdiffer import diff
 from inspect import signature
 from pathlib import Path
 from threading import Lock
+
+from dictdiffer import diff
 from tzlocal import get_localzone
 
 from notion.logger import logger
@@ -346,6 +346,7 @@ class RecordStore(object):
 
         self.store_recordmap(response["recordMap"])
 
+        # TODO: dict or list?
         return response["result"]
 
     def handle_post_transaction_refreshing(self):
