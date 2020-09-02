@@ -12,9 +12,6 @@ from notion import (
 with open("README.md") as file:
     long_description = file.read()
 
-with open("LICENSE") as file:
-    license = file.read()
-
 with open("requirements.txt") as file:
     r = file.read().split("\n")
     r = map(lambda l: l.strip(), filter(len, r))
@@ -34,7 +31,6 @@ setup(
     description=__description__,
     long_description=long_description,
     long_description_content_type="text/markdown",
-    license=license,
     install_requires=install_requires,
     include_package_data=True,
     packages=packages,
