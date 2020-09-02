@@ -56,3 +56,7 @@ def assert_block_attributes(block, **kwargs):
 
     for attr, value in kwargs.items():
         assert getattr(block, attr) == value
+
+
+def pytest_collection_modifyitems(config, items):
+    items.sort(key=lambda i: i.name.startswith("test_workflow"))

@@ -15,7 +15,6 @@ jobs:
 
       - run: make dev-install
       - run: make install
-
       - run: make smoke-test
         env:
           NOTION_TOKEN_V2: ${{ secrets.NOTION_TOKEN_V2 }}

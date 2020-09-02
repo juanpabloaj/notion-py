@@ -14,8 +14,8 @@ jobs:
         with: { python-version: '3.x' }
 
       - run: make dev-install
+      - run: make install
       - run: make build
-
       - run: make publish
         env:
           TWINE_USERNAME: __token__
