@@ -16,3 +16,4 @@ smoke_tests/__pycache__/
 .env
 .venv
 .idea/
+.notion-py/

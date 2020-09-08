@@ -46,12 +46,12 @@ class Record:
         str
             String with details about the object.
         """
-        fields = []
+        fields = set()
 
         for klass in self.__class__.__mro__[:-1]:
             for f in self._get_str_fields(klass):
                 r = repr(getattr(self, f))
-                fields.append(f"{f}={r}")
+                fields.add(f"{f}={r}")
 
         return ", ".join(fields)
 

@@ -6,7 +6,6 @@ on:
       - notion/**
       - tests/**
 
-
 jobs:
   main:
     runs-on: ubuntu-latest
