@@ -1,6 +1,11 @@
 name: Check Code Formatting
 
-on: push
+on:
+  push:
+    paths:
+      - notion/**
+      - tests/**
+      - smoke_tests/**
 
 jobs:
   main:
