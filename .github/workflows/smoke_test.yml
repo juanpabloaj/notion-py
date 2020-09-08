@@ -3,6 +3,9 @@ name: Run Smoke Tests
 on:
   push:
     branches: [master]
+    paths:
+      - notion/**
+      - smoke_tests/**
 
 jobs:
   main:
