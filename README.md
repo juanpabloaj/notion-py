@@ -296,10 +296,6 @@ For columns of type "Person", we expect a `NotionUser` instance,
 or a list of them, and for a "Relation" we expect a singular/list 
 of instances of a subclass of `Block`.
 
-
-> **_NOTE:_**: all `search` and `query` functionality in the following 
-> is currently inactive, pending https://github.com/jamalex/notion-py/pull/95. 
-
 ```Python
 # Access a database using the URL of the database page or the inline block
 cv = client.get_collection_view("https://www.notion.so/myorg/b9076...8b832?v=8de...8e1")
