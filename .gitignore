@@ -1,14 +1,12 @@
 *.pyc
 *.egg-info
+__pycache__/
+.pytest_cache/
 
 dist/
 build/
 public/
 docs/api/
-.pytest_cache/
-notion/__pycache__/
-tests/__pycache__/
-smoke_tests/__pycache__/
 
 # make clean will remove files above this line
 # --------------------------------------------
