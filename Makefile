@@ -1,5 +1,5 @@
-.PHONY: help clean install dev-install self-install
-.PHONY: build publish docs lock format try-format
+.PHONY: help clean install dev-install self-install build
+.PHONY: publish docs serve-docs lock format try-format
 .PHONY: test try-test smoke-test try-smoke-test
 
 
@@ -49,6 +49,10 @@ publish:  ## publish the package on PyPI
 docs:  ## generate documentation in HTML
 	sphinx-apidoc -f -o docs/api/ notion/
 	sphinx-build -b dirhtml docs/ public/
+
+
+serve-docs:  ## generate and serve documentation
+	python docs/serve.py
 
 
 lock:  ## lock all dependency versions
