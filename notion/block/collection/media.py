@@ -35,6 +35,9 @@ class CollectionViewBlock(MediaBlock):
 
     @property
     def title(self):
+        if not hasattr(self, "_collection"):
+            return ""
+
         return self.collection.name
 
     @title.setter
@@ -43,6 +46,9 @@ class CollectionViewBlock(MediaBlock):
 
     @property
     def description(self):
+        if not hasattr(self, "_collection"):
+            return ""
+
         return self.collection.description
 
     @description.setter
