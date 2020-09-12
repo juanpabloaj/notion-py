@@ -301,6 +301,7 @@ class RecordStore(object):
         aggregate: list = None,
         aggregations: list = None,
         filter: dict = None,
+        filter_operator: str = "and",
         sort: list = [],
         calendar_by: str = "",
         group_by: str = "",
@@ -320,6 +321,8 @@ class RecordStore(object):
         # convert singletons into lists if needed
         if isinstance(aggregate, dict):
             aggregate = [aggregate]
+        if isinstance(filter, dict):
+            filter = [filter]
         if isinstance(sort, dict):
             sort = [sort]
 
@@ -337,7 +340,10 @@ class RecordStore(object):
             "query": {
                 "aggregate": aggregate,
                 "aggregations": aggregations,
-                "filter": filter,
+                "filter": {
+                    "filters": filter,
+                    "filter_operator": filter_operator,
+                },
                 "sort": sort,
             },
         }
