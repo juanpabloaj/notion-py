@@ -1,3 +1,4 @@
+import os
 import uuid
 from datetime import datetime
 from typing import Union, Iterable, Any
@@ -35,6 +36,37 @@ def now() -> int:
         Time since epoch in seconds.
     """
     return int(datetime.now().timestamp() * 1000)
+
+
+def human_size(path: str, divider: int = 1024) -> str:
+    """
+    Get human readable file size.
+
+
+    Arguments
+    ---------
+    path : str
+        Path to the file.
+
+    divider : int, optional
+        Divider used for calculations, use 1000 or 1024.
+        Defaults to 1024.
+
+
+    Returns
+    -------
+    str
+        Converted size.
+    """
+    size, divider = os.path.getsize(path), float(divider)
+    size = size / divider if size < divider else size
+
+    for unit in ("KB", "KB", "MB", "GB", "TB"):
+        if abs(size) < divider:
+            return f"{size:.1f}{unit}"
+        size /= divider
+
+    return str(size)
 
 
 def extract_id(url_or_id: str) -> str:
@@ -152,7 +184,9 @@ def add_signed_prefix_as_needed(url: str, client=None) -> str:
         return ""
 
     if url.startswith(S3_URL_PREFIX):
-        url = SIGNED_URL_PREFIX + quote_plus(url)
+        path, query = url.split("?")
+        url = f"{SIGNED_URL_PREFIX}{quote_plus(path)}?{query}"
+
         if client:
             url = client.session.head(url).headers.get("Location")
 

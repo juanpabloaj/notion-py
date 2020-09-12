@@ -1,11 +1,12 @@
 import os
 from mimetypes import guess_type
+from urllib.parse import urlencode, urlparse
 
 import requests
 
 from notion.block.embed import EmbedBlock
 from notion.maps import field_map, property_map
-from notion.settings import S3_URL_PREFIX
+from notion.utils import human_size
 
 
 class UploadBlock(EmbedBlock):
@@ -34,19 +35,36 @@ class UploadBlock(EmbedBlock):
 
         content_type = guess_type(path)[0] or "text/plain"
         file_name = os.path.split(path)[-1]
+        file_size = human_size(path)
 
         data = {"bucket": "secure", "name": file_name, "contentType": content_type}
         resp = self._client.post("getUploadFileUrl", data).json()
 
         with open(path, mode="rb") as f:
             response = requests.put(
-                resp["signedPutUrl"], data=f, headers={"Content-type": content_type}
+                resp["signedPutUrl"], data=f, headers={"Content-Type": content_type}
             )
             response.raise_for_status()
 
-        self.display_source = resp["url"]
-        self.source = resp["url"]
-        self.file_id = resp["url"][len(S3_URL_PREFIX) :].split("/")[0]
+        query = urlencode(
+            {
+                "cache": "v2",
+                "name": file_name,
+                "id": self._id,
+                "table": self._table,
+                "userId": self._client.current_user.id,
+            }
+        )
+        url = resp["url"]
+        query_url = f"{url}?{query}"
+
+        # special case for FileBlock
+        if hasattr(self, "size"):
+            setattr(self, "size", file_size)
+
+        self.source = query_url
+        self.display_source = query_url
+        self.file_id = urlparse(url).path.split("/")[2]
 
 
 class FileBlock(UploadBlock):
