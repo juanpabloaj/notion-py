@@ -1,5 +1,7 @@
 from datetime import datetime, date
+from random import choice
 from typing import Optional
+from uuid import uuid1
 
 from notion.block.basic import PageBlock, Block
 from notion.block.children import Templates
@@ -404,33 +406,39 @@ class CollectionRowBlock(PageBlock):
                         )
                     )
                 val = [[str(val)]]
-        if prop["type"] in ["select"]:
-            if not val:
-                val = None
-            else:
-                valid_options = [p["value"].lower() for p in prop["options"]]
-                val = val.split(",")[0]
-                if val.lower() not in valid_options:
-                    raise ValueError(
-                        "Value '{}' not acceptable for property '{}' (valid options: {})".format(
-                            val, identifier, valid_options
-                        )
-                    )
-                val = [[val]]
-        if prop["type"] in ["multi_select"]:
-            if not val:
-                val = []
-            valid_options = [p["value"].lower() for p in prop["options"]]
+
+        if val and prop["type"] in ["select", "multi_select"]:
+            colors = [
+                "default",
+                "gray",
+                "brown",
+                "orange",
+                "yellow",
+                "green",
+                "blue",
+                "purple",
+                "pink",
+                "red",
+            ]
+            prop["options"] = prop.get("options", [])
+
+            valid_options = list([p["value"].lower() for p in prop["options"]])
             if not isinstance(val, list):
                 val = [val]
-            for v in val:
+            schema_need_update = False
+            for vid, v in enumerate(val):
+                val[vid] = v = v.replace(",", "")
                 if v.lower() not in valid_options:
-                    raise ValueError(
-                        "Value '{}' not acceptable for property '{}' (valid options: {})".format(
-                            v, identifier, valid_options
-                        )
+                    schema_need_update = True
+                    prop["options"].append(
+                        {"id": str(uuid1()), "value": v, "color": choice(colors)}
                     )
+                    valid_options.append(v.lower())
             val = [[",".join(val)]]
+            if schema_need_update:
+                schema = self.collection.get("schema")
+                schema[prop["id"]] = prop
+                self.collection.set("schema", schema)
         if prop["type"] in ["person"]:
             userlist = []
             if not isinstance(val, list):
