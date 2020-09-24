@@ -19,6 +19,7 @@ class Record:
         child records are removed, it should specify the key here.
     """
 
+    _type = ""
     _str_fields = "id"
 
     # TODO: rename this variable to something hidden
@@ -46,14 +47,20 @@ class Record:
         str
             String with details about the object.
         """
-        fields = set()
+        fields = {}
 
-        for klass in self.__class__.__mro__[:-1]:
+        # go trough the inheritance chain but skip the `<type>`
+        for klass in reversed(self.__class__.__mro__[:-1]):
             for f in self._get_str_fields(klass):
-                r = repr(getattr(self, f))
-                fields.add(f"{f}={r}")
+                v = getattr(self, f)
+                if v:
+                    fields[f] = f"{f}={repr(v)}"
 
-        return ", ".join(fields)
+        # skip printing type if its other than the default
+        if self._type == "" or self._type == "block":
+            fields.pop("type", None)
+
+        return ", ".join(fields.values())
 
     def __repr__(self) -> str:
         """
@@ -63,7 +70,7 @@ class Record:
         Returns
         -------
         str
-            Computer friendly string with details about the object.
+            String with details about the object.
         """
         return f"<{self.__class__.__name__} ({self})>"
 
