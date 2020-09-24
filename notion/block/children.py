@@ -2,7 +2,7 @@ import time
 from typing import Union
 
 from notion.block.basic import Block
-from notion.block.types import all_block_types
+from notion.block.types import get_block_type
 from notion.logger import logger
 from notion.operations import build_operation
 from notion.utils import extract_id
@@ -20,7 +20,7 @@ class Children:
         kids = list(self)
         if type:
             if isinstance(type, str):
-                type = all_block_types().get(type, Block)
+                type = get_block_type(type)
             kids = [kid for kid in kids if isinstance(kid, type)]
         return kids
 

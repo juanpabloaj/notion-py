@@ -165,6 +165,15 @@ class CollectionBlock(Block):
         return CollectionQuery(self, self._get_a_collection_view(), **kwargs).execute()
 
     def get_rows(self, **kwargs):
+        """
+        Get all rows from a collection.
+
+
+        Returns
+        -------
+        CollectionQueryResult
+            All rows.
+        """
         return self.query(**kwargs)
 
     def _convert_diff_to_changelist(self, difference, old_val, new_val):

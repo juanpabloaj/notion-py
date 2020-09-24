@@ -1,8 +1,7 @@
 from notion.block.basic import Block
-from notion.block.collection.basic import CollectionViewBlock
 from notion.block.collection.common import _normalize_query_data, _normalize_prop_name
 from notion.utils import extract_id
-from notion.block.types import collection_query_result_types
+from notion.block.types import get_collection_query_result_type
 
 
 class CollectionQuery:
@@ -52,11 +51,9 @@ class CollectionQuery:
             Result of the query.
         """
 
-        result_class = collection_query_result_types().get(
-            self.type, CollectionQueryResult
-        )
+        klass = get_collection_query_result_type(self.type)
 
-        return result_class(
+        return klass(
             self.collection,
             self._client._store.call_query_collection(
                 collection_id=self.collection.id,
@@ -93,8 +90,9 @@ class CollectionQueryResult:
     def _get_block_ids(self, result):
         return result["blockIds"]
 
-    def _get_block(self, id):
-        block = CollectionViewBlock(self.collection._client, id)
+    def _get_block(self, bid):
+        from notion.block.collection.basic import CollectionRowBlock
+        block = CollectionRowBlock(self.collection._client, bid)
         # TODO: wtf? pass it as argument?
         block.__dict__["collection"] = self.collection
         return block

@@ -11,12 +11,13 @@ from zipfile import ZipFile
 from requests import Session, get, Response
 from requests.adapters import HTTPAdapter
 from requests.cookies import cookiejar_from_dict
-from requests.packages.urllib3.util.retry import Retry
+from urllib3.util.retry import Retry
 
 from notion.block.basic import Block
-from notion.block.collection.basic import CollectionBlock, TemplateBlock
+from notion.block.collection.basic import CollectionBlock, TemplateBlock, \
+    CollectionRowBlock
 from notion.block.collection.view import CollectionView
-from notion.block.types import all_block_types, collection_view_types
+from notion.block.types import get_block_type, get_collection_view_type
 from notion.logger import logger
 from notion.monitor import Monitor
 from notion.operations import operation_update_last_edited, build_operation
@@ -358,14 +359,17 @@ class NotionClient:
         if not block:
             return None
 
+        klass = None
+
         if block.get("parent_table") == "collection":
             if block.get("is_template"):
-                return TemplateBlock(client=self, block_id=block_id)
+                klass = TemplateBlock
             else:
                 # TODO: this class does not inherit from Block, what's the difference?
-                return CollectionBlock(client=self, block_id=block_id)
+                klass = CollectionRowBlock
+        else:
+            klass = get_block_type(block.get("type"))
 
-        klass = all_block_types().get(block.get("type", ""), Block)
         return klass(client=self, block_id=block_id)
 
     def get_collection(self, collection_id: str, force_refresh: bool = False):
@@ -461,10 +465,8 @@ class NotionClient:
         )
 
         if view:
-            view_type = collection_view_types().get(
-                view.get("type", ""), CollectionView
-            )
-            return view_type(self, view_id, collection=collection)
+            klass = get_collection_view_type(view.get("type", ""))
+            return klass(self, view_id, collection=collection)
 
         return None
 
