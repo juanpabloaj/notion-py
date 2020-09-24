@@ -1,9 +1,11 @@
 from importlib import import_module
 
 
-def get_blocks(file_name: str, suffix: str = "Block") -> dict:
+def _get_blocks(file_name: str, suffix: str = "Block") -> dict:
     """
-    Get list of classes that end with `suffix` from some `file_name`.
+    Get a mapping of types and classes
+    that end with `suffix` found in `file_name`.
+
 
     This function caches the results using `file_name` as a key.
 
@@ -11,7 +13,8 @@ def get_blocks(file_name: str, suffix: str = "Block") -> dict:
     Arguments
     ---------
     file_name : str
-        File name to the file in `notion.block` module. Without extension.
+        File name to the file in `notion.block` module.
+        Pass it without extension (.py).
 
     suffix : str, optional
         Class suffix to used to filter the objects.
@@ -23,7 +26,7 @@ def get_blocks(file_name: str, suffix: str = "Block") -> dict:
     dict
         Mapping of types to their classes.
     """
-    cache = getattr(get_blocks, "_cache", {})
+    cache = getattr(_get_blocks, "_cache", {})
 
     if cache.get(file_name):
         return cache[file_name]
@@ -37,27 +40,34 @@ def get_blocks(file_name: str, suffix: str = "Block") -> dict:
             blocks[klass._type] = klass
 
     cache[file_name] = blocks
-    setattr(get_blocks, "_cache", cache)
+    setattr(_get_blocks, "_cache", cache)
 
     return blocks
 
 
-def all_block_types() -> dict:
+def get_all_block_types() -> dict:
     return {
-        **get_blocks("basic"),
-        **get_blocks("database"),
-        **get_blocks("embed"),
-        **get_blocks("inline"),
-        **get_blocks("media"),
-        **get_blocks("upload"),
-        **get_blocks("collection.basic"),
-        **get_blocks("collection.media"),
+        **_get_blocks("basic"),
+        **_get_blocks("database"),
+        **_get_blocks("embed"),
+        **_get_blocks("inline"),
+        **_get_blocks("media"),
+        **_get_blocks("upload"),
+        **_get_blocks("collection.basic"),
+        **_get_blocks("collection.media"),
     }
 
 
-def collection_view_types() -> dict:
-    return get_blocks("collection.view", "View")
+def get_block_type(block_type: str = "", default="block"):
+    blocks = get_all_block_types()
+    return blocks.get(block_type, None) or blocks[default]
 
 
-def collection_query_result_types() -> dict:
-    return get_blocks("collection.query", "QueryResult")
+def get_collection_view_type(view_type: str, default="collection_view"):
+    blocks = _get_blocks("collection.view", "View")
+    return blocks.get(view_type, None) or blocks[default]
+
+
+def get_collection_query_result_type(query_result_type: str, default="collection"):
+    blocks = _get_blocks("collection.query", "QueryResult")
+    return blocks.get(query_result_type, None) or blocks[default]
