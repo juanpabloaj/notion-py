@@ -210,9 +210,7 @@ class RecordStore(object):
                 self._values[table][id] = value
                 self._save_cache("_values")
                 if old_val and difference:
-                    logger.debug(
-                        f"Value changed! Difference:\n{pformat(difference)}"
-                    )
+                    logger.debug(f"Value changed! Difference:\n{pformat(difference)}")
                     callback_queue.append((table, id, difference, old_val, value))
 
         # run callbacks outside the mutex to avoid lockups

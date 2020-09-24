@@ -92,6 +92,7 @@ class CollectionQueryResult:
 
     def _get_block(self, bid):
         from notion.block.collection.basic import CollectionRowBlock
+
         block = CollectionRowBlock(self.collection._client, bid)
         # TODO: wtf? pass it as argument?
         block.__dict__["collection"] = self.collection

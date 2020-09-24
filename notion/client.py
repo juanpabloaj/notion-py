@@ -14,8 +14,11 @@ from requests.cookies import cookiejar_from_dict
 from urllib3.util.retry import Retry
 
 from notion.block.basic import Block
-from notion.block.collection.basic import CollectionBlock, TemplateBlock, \
-    CollectionRowBlock
+from notion.block.collection.basic import (
+    CollectionBlock,
+    TemplateBlock,
+    CollectionRowBlock,
+)
 from notion.block.collection.view import CollectionView
 from notion.block.types import get_block_type, get_collection_view_type
 from notion.logger import logger
