@@ -11,13 +11,17 @@
   ![check formatting][check-formatting-url]
   ![run unit tests][run-unit-tests-url]  
   ![upload-python-package][upload-python-package-url]
-  ![run-smoke-tests][run-smoke-tests-url]  
-  ![code-style-black][code-style-black-url]
+  ![run-smoke-tests][run-smoke-tests-url]
+  ![documentation-status][documentation-status-url]  
+  ![code-style][code-style-url]
   ![license][license-url]
   ![code-size][code-size-url]
   ![downloads-rate][downloads-rate-url]
 </div>
 <br>
+
+ 
+
 
 ---
 
@@ -412,7 +416,8 @@ We're currently [hiring](https://grnh.se/6epyi21) -- come join us!
 [run-unit-tests-url]: https://github.com/arturtamborski/notion-py/workflows/Run%20Unit%20Tests/badge.svg
 [upload-python-package-url]: https://github.com/arturtamborski/notion-py/workflows/Upload%20Python%20Package/badge.svg
 [run-smoke-tests-url]: https://github.com/arturtamborski/notion-py/workflows/Run%20Smoke%20Tests/badge.svg
-[code-style-black-url]: https://img.shields.io/badge/code%20style-black-000000
+[code-style-url]: https://img.shields.io/badge/code%20style-black-000000
+[documentation-status-url]: https://readthedocs.org/projects/notion-py/badge/?version=latest
 [license-url]: https://img.shields.io/github/license/arturtamborski/notion-py
 [code-size-url]: https://img.shields.io/github/languages/code-size/arturtamborski/notion-py
 [downloads-rate-url]: https://img.shields.io/pypi/dm/notion-py.svg
