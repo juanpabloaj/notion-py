@@ -39,6 +39,22 @@ imports are still working as before, the `-py` in
 name is there only to differentiate between these two.
 
 ---
+ 
+These libraries as of now are _not_ fully compatible.
+
+List of major differences:
+- imports were changed, especially for blocks and collections.  
+  General rule is:
+  - `notion.block.py       ->  notion.block.*.py`
+  - `notion.collection.py  ->  notion.block.collection.*.py`
+- some block names were changed to align them with notion.so  
+  One of such examples is `TodoBlock -> ToDoBlock` (because it's type is `to_do`)
+- some function definitions also changed  
+  I did that to simplify the API and make it more uniform.
+
+<br>
+<br>
+
 
 
 ## Features
