@@ -9,6 +9,7 @@ from urllib.parse import urlencode
 
 from requests import HTTPError
 
+from notion.block.collection.basic import CollectionBlock
 from notion.logger import logger
 from notion.record import Record
 from notion.settings import MESSAGE_STORE_URL
@@ -130,8 +131,9 @@ class Monitor:
         self.client.refresh_records(**records_to_refresh)
 
     def url(self, **kwargs) -> str:
-        kwargs["sessionId"] = kwargs.get("sessionId", self.session_id)
+        kwargs["b64"] = 1
         kwargs["transport"] = kwargs.get("transport", "polling")
+        kwargs["sessionId"] = kwargs.get("sessionId", self.session_id)
         return f"{self.root_url}?{urlencode(kwargs)}"
 
     def initialize(self):
@@ -190,17 +192,15 @@ class Monitor:
             )
 
             # if it's a collection, subscribe to changes to its children too
-
-            # TODO: fix imports
-            # if isinstance(record, Collection):
-            #    sub_data.append(
-            #        {
-            #            "type": "/api/v1/registerSubscription",
-            #            "requestId": str(uuid.uuid4()),
-            #            "key": "collection/{}".format(record.id),
-            #            "version": -1,
-            #        }
-            #    )
+            if isinstance(record, CollectionBlock):
+                sub_data.append(
+                    {
+                        "type": "/api/v1/registerSubscription",
+                        "requestId": str(uuid.uuid4()),
+                        "key": "collection/{}".format(record.id),
+                        "version": -1,
+                    }
+                )
 
         self.post_data(self._encode_numbered_json_thing(sub_data))
 
@@ -229,6 +229,7 @@ class Monitor:
         ---------
         retries : int, optional
             Number of times to retry request if it fails.
+            Should be bigger than 5.
             Defaults to 10.
 
 
@@ -241,9 +242,9 @@ class Monitor:
 
         while retries:
             try:
+                retries -= 1
                 response = self.client.session.get(self.url(EIO=3, sid=self.sid))
                 response.raise_for_status()
-                retries -= 1
 
             except HTTPError as e:
                 try:
@@ -263,6 +264,8 @@ class Monitor:
                     logger.error(
                         f"Persistent error submitting poll request: {message} (will retry {retries} more times)"
                     )
+
+                if retries == 3:
                     # if we're close to giving up, also try reinitializing the session
                     self.initialize()
 
