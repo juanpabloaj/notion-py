@@ -5,6 +5,7 @@ from collections import defaultdict, Callable
 from copy import deepcopy
 from inspect import signature
 from pathlib import Path
+from pprint import pformat
 from threading import Lock
 
 from dictdiffer import diff
@@ -190,12 +191,12 @@ class RecordStore(object):
 
         with self._mutex:
             if role:
-                logger.debug("Updating 'role' for {}/{} to {}".format(table, id, role))
+                logger.debug(f"Updating 'role' for '{table}/{id}' to '{role}'")
                 self._role[table][id] = role
                 self._save_cache("_role")
             if value:
                 logger.debug(
-                    "Updating 'value' for {}/{} to {}".format(table, id, value)
+                    f"Updating 'value' for '{table}/{id}'" f" to \n{pformat(value)}"
                 )
                 old_val = self._values[table][id]
                 difference = list(
@@ -209,7 +210,9 @@ class RecordStore(object):
                 self._values[table][id] = value
                 self._save_cache("_values")
                 if old_val and difference:
-                    logger.debug("Value changed! Difference: {}".format(difference))
+                    logger.debug(
+                        f"Value changed! Difference:\n{pformat(difference)}"
+                    )
                     callback_queue.append((table, id, difference, old_val, value))
 
         # run callbacks outside the mutex to avoid lockups
