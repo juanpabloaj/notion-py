@@ -7,4 +7,5 @@ pytest
 
 sphinx
 sphinx-rtd-theme
+sphinxcontrib-apidoc
 livereload

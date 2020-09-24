@@ -20,9 +20,14 @@ extensions = [
     "sphinx.ext.githubpages",
     "sphinx.ext.autodoc",
     "sphinx_rtd_theme",
+    "sphinxcontrib.apidoc",
 ]
 
 napoleon_include_init_with_doc = True
 napoleon_google_docstring = False
 napoleon_use_param = True
 napoleon_use_rtype = True
+
+apidoc_output_dir = "api"
+apidoc_module_dir = "../notion"
+apidoc_extra_args = ["--force"]

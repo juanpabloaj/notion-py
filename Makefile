@@ -47,7 +47,6 @@ publish:  ## publish the package on PyPI
 
 
 docs:  ## generate documentation in HTML
-	sphinx-apidoc -f -o docs/api/ notion/
 	sphinx-build -b dirhtml docs/ public/
 
 
