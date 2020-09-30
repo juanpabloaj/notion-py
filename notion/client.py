@@ -177,8 +177,7 @@ class NotionClient:
         retry = Retry(
             total=5,
             backoff_factor=0.3,
-            status_forcelist=(502,),  # retry on 502
-            # CAUTION: adding 'POST' to this list which is not technically idempotent
+            status_forcelist=(502, 503),
             method_whitelist=(
                 "POST",
                 "HEAD",
