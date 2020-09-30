@@ -23,7 +23,7 @@ from notion.block.collection.view import CollectionView
 from notion.block.types import get_block_type, get_collection_view_type
 from notion.logger import logger
 from notion.monitor import Monitor
-from notion.operations import operation_update_last_edited, build_operation
+from notion.operations import operation_update_last_edited, build_operations
 from notion.settings import API_BASE_URL
 from notion.space import NotionSpace
 from notion.store import RecordStore
@@ -706,7 +706,7 @@ class NotionClient:
                 self._store.run_local_operation(**operation)
 
     def build_and_submit_transaction(self, *args, **kwargs):
-        self.submit_transaction(build_operation(*args, **kwargs))
+        self.submit_transaction(build_operations(*args, **kwargs))
 
     def as_atomic_transaction(self) -> Transaction:
         """
@@ -817,7 +817,7 @@ class NotionClient:
         """
         # make up a new UUID; apparently we get to choose our own!
         record_id = str(uuid.uuid4())
-        child_list_key = kwargs.get("child_list_key", parent._child_list_key)
+        child_list_key = kwargs.get("child_list_key") or parent._child_list_key
 
         args = {
             "id": record_id,
@@ -832,13 +832,13 @@ class NotionClient:
 
         with self.as_atomic_transaction():
             self.build_and_submit_transaction(
-                block_id=record_id, path="", args=args, command="set", table=table
+                record_id=record_id, path="", args=args, command="set", table=table
             )
 
             # add the record to the content list of the parent, if needed
             if child_list_key:
                 self.build_and_submit_transaction(
-                    block_id=parent.id,
+                    record_id=parent.id,
                     path=child_list_key,
                     args={"id": record_id},
                     command="listAfter",

@@ -183,7 +183,7 @@ class Block(Record):
         if self.is_alias:
             # only remove it from the alias parent's content list
             return self._client.build_and_submit_transaction(
-                block_id=self._alias_parent,
+                record_id=self._alias_parent,
                 path="content",
                 args={"id": self.id},
                 command="listRemove",
@@ -192,13 +192,13 @@ class Block(Record):
         with self._client.as_atomic_transaction():
             # Mark the block as inactive
             self._client.build_and_submit_transaction(
-                block_id=self.id, path="", args={"alive": False}, command="update"
+                record_id=self.id, path="", args={"alive": False}, command="update"
             )
 
             # Remove the block's ID from a list on its parent, if needed
             if self.parent._child_list_key:
                 self._client.build_and_submit_transaction(
-                    block_id=self.parent.id,
+                    record_id=self.parent.id,
                     path=self.parent._child_list_key,
                     args={"id": self.id},
                     command="listRemove",
@@ -239,7 +239,7 @@ class Block(Record):
                 # Set the parent_id of the moving block to the new parent,
                 # and mark it as active again
                 self._client.build_and_submit_transaction(
-                    block_id=self.id,
+                    record_id=self.id,
                     path="",
                     args={
                         "alive": True,
@@ -253,7 +253,7 @@ class Block(Record):
 
             # Add the moving block's ID to the "content" list of the new parent
             self._client.build_and_submit_transaction(
-                block_id=new_parent_id,
+                record_id=new_parent_id,
                 path="content",
                 args=args,
                 command=list_command,
@@ -284,7 +284,7 @@ class Block(Record):
 
         with self._client.as_atomic_transaction():
             self._client.build_and_submit_transaction(
-                block_id=self.id,
+                record_id=self.id,
                 path="format",
                 args=args,
                 command="update",

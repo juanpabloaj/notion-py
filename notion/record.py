@@ -341,7 +341,7 @@ class Record:
             Value to set under provided path.
         """
         self._client.build_and_submit_transaction(
-            block_id=self.id,
+            record_id=self.id,
             path=path,
             args=value,
             command="set",

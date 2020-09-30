@@ -1,8 +1,8 @@
 from notion.utils import now
 
 
-def build_operation(
-    block_id: str,
+def build_operations(
+    record_id: str,
     path: str,
     args: dict,
     command: str,
@@ -14,7 +14,7 @@ def build_operation(
 
     Arguments
     ---------
-    block_id : str
+    record_id : str
         ID of the object.
 
     path : str
@@ -47,7 +47,7 @@ def build_operation(
     path = [] if path == [""] else path
 
     return {
-        "id": block_id,
+        "id": record_id,
         "path": path,
         "args": args,
         "command": command,
@@ -55,7 +55,7 @@ def build_operation(
     }
 
 
-def operation_update_last_edited(user_id, block_id) -> dict:
+def operation_update_last_edited(user_id, record_id) -> dict:
     """
     Convenience function for constructing "last edited" operation.
 
@@ -69,8 +69,8 @@ def operation_update_last_edited(user_id, block_id) -> dict:
     user_id : str
         User ID
 
-    block_id : str
-        Block ID
+    record_id : str
+        ID of the object.
 
 
     Returns
@@ -78,8 +78,8 @@ def operation_update_last_edited(user_id, block_id) -> dict:
     dict
         Constructed dict with last edited operation included.
     """
-    return build_operation(
-        block_id=block_id,
+    return build_operations(
+        record_id=record_id,
         path="",
         args={"last_edited_by": user_id, "last_edited_time": now()},
         command="update",

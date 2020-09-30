@@ -152,7 +152,7 @@ class Children:
         """
 
         self._client.build_and_submit_transaction(
-            block_id=self._parent.id,
+            record_id=self._parent.id,
             path=self._child_list_key,
             args={"id": block.id},
             command="listAfter",
