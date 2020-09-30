@@ -55,7 +55,7 @@ HTMLRendererStyles = """
 
 class MistletoeHTMLRendererSpanTokens(MistletoeHTMLRenderer):
     """
-    Renders Markdown to HTML without any MD block tokens (like blockquote or code)
+    Renders Markdown to HTML without any MD block tokens (like blockquote)
     except for the paragraph block token, because you need at least one.
     """
 
@@ -63,7 +63,9 @@ class MistletoeHTMLRendererSpanTokens(MistletoeHTMLRenderer):
         ret = super().__enter__()
         for klass_name in block_token.__all__[:-1]:  # All but Paragraph token
             block_token.remove_token(getattr(block_token, klass_name))
-        span_token.remove_token(span_token.AutoLink)  # don't auto-link urls in markdown
+
+        # don't auto-link urls in markdown
+        span_token.remove_token(span_token.AutoLink)
         return ret
 
     def render_paragraph(self, token):
