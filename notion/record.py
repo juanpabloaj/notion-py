@@ -10,20 +10,12 @@ from notion.utils import extract_id, get_by_path
 class Record:
     """
     Basic collection of information about a notion-like block.
-
-
-    Attributes
-    ----------
-    child_list_key
-        If a subclass has a list of ids that should be update when
-        child records are removed, it should specify the key here.
     """
 
     _type = ""
+    _table = ""
     _str_fields = "id"
-
-    # TODO: rename this variable to something hidden
-    child_list_key = None
+    _child_list_key = None
 
     def __init__(self, client, block_id: str, *args, **kwargs):
         """
