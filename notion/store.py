@@ -5,7 +5,6 @@ from collections import defaultdict, Callable
 from copy import deepcopy
 from inspect import signature
 from pathlib import Path
-from pprint import pformat
 from threading import Lock
 from typing import Union
 
@@ -205,8 +204,9 @@ class RecordStore:
                 self._role[table][record_id] = role
                 self._save_cache("_role")
             if value:
+                p_value = json.dumps(value, indent=2)
                 logger.debug(
-                    f"Updating 'value' for '{table}/{record_id}' to \n{pformat(value)}"
+                    f"Updating 'value' for '{table}/{record_id}' to \n{p_value}"
                 )
                 old_val = self._values[table][record_id]
                 difference = list(
@@ -220,7 +220,8 @@ class RecordStore:
                 self._values[table][record_id] = value
                 self._save_cache("_values")
                 if old_val and difference:
-                    logger.debug(f"Value changed! Difference:\n{pformat(difference)}")
+                    p_difference = json.dumps(value, indent=2)
+                    logger.debug(f"Value changed! Difference:\n{p_difference}")
                     callback = (table, record_id, difference, old_val, value)
                     callback_queue.append(callback)
 
