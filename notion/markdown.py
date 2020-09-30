@@ -74,22 +74,22 @@ FORMAT_PRECEDENCE = ["s", "b", "i", "a", "c"]
 
 
 def _extract_text_and_format_from_ast(item: dict):
-    type = item["type"]
+    item_type = item["type"]
 
-    if type == "html_inline":
+    if item_type == "html_inline":
         if item.get("literal", "") == "<s>":
             return "", ("s",)
 
-    if type == "emph":
+    if item_type == "emph":
         return item.get("literal", ""), ("i",)
 
-    if type == "strong":
+    if item_type == "strong":
         return item.get("literal", ""), ("b",)
 
-    if type == "code":
+    if item_type == "code":
         return item.get("literal", ""), ("c",)
 
-    if type == "link":
+    if item_type == "link":
         if "destination" in item:
             return item.get("literal", ""), ("a", item["destination"])
 
@@ -137,7 +137,8 @@ def markdown_to_notion(markdown: str) -> list:
         Blocks converted from input.
     """
 
-    # commonmark doesn't support strikethrough, so we need to handle it ourselves
+    # commonmark doesn't support strikethrough,
+    # so we need to handle it ourselves
     while markdown.count("~~") >= 2:
         markdown = markdown.replace("~~", "<s>", 1)
         markdown = markdown.replace("~~", "</s>", 1)
@@ -182,7 +183,8 @@ def markdown_to_notion(markdown: str) -> list:
                     else [literal]
                 )
 
-            # in the ast format, code blocks are meant to be immediately self-closing
+            # in the ast format, code blocks are meant
+            # to be immediately self-closing
             if ("c",) in format:
                 format.remove(("c",))
 
@@ -193,10 +195,10 @@ def markdown_to_notion(markdown: str) -> list:
     # consolidate any adjacent text blocks with identical styles
     consolidated = []
     for item in notion:
-        if consolidated and _get_format(consolidated[-1], as_set=True) == _get_format(
-            item, as_set=True
-        ):
-            consolidated[-1][0] += item[0]
+        if consolidated:
+            fmt = _get_format(consolidated[-1], as_set=True)
+            if fmt == _get_format(item, as_set=True):
+                consolidated[-1][0] += item[0]
         elif item[0]:
             consolidated.append(item)
 
