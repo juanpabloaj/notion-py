@@ -9,7 +9,6 @@ from notion.maps import (
     boolean_property_map,
     Mapper,
 )
-from notion.operations import build_operation
 from notion.record import Record
 from notion.settings import BASE_URL
 from notion.utils import get_by_path
@@ -107,7 +106,8 @@ class Block(Record):
                 content_changed = True
                 continue
 
-            # check whether the value changed matches one of our mapped fields/properties
+            # check whether the value changed matches
+            # one of our mapped fields/properties
             fields = [
                 (name, field)
                 for name, field in mappers.items()
@@ -120,23 +120,22 @@ class Block(Record):
             remaining.append(d)
 
         if content_changed:
-
             old = deepcopy(old_val.get("content", []))
             new = deepcopy(new_val.get("content", []))
 
             # track what's been added and removed
             removed = set(old) - set(new)
             added = set(new) - set(old)
-            for id in removed:
-                changes.append(("content_removed", "content", id))
-            for id in added:
-                changes.append(("content_added", "content", id))
+            for i in removed:
+                changes.append(("content_removed", "content", i))
+            for i in added:
+                changes.append(("content_added", "content", i))
 
             # ignore the added/removed items, and see whether order has changed
-            for id in removed:
-                old.remove(id)
-            for id in added:
-                new.remove(id)
+            for i in removed:
+                old.remove(i)
+            for i in added:
+                new.remove(i)
             if old != new:
                 changes.append(("content_reordered", "content", (old, new)))
 
@@ -184,43 +183,37 @@ class Block(Record):
         """
         if self.is_alias:
             # only remove it from the alias parent's content list
-            return self._client.submit_transaction(
-                build_operation(
-                    id=self._alias_parent,
-                    path="content",
-                    args={"id": self.id},
-                    command="listRemove",
-                )
+            return self._client.build_and_submit_transaction(
+                block_id=self._alias_parent,
+                path="content",
+                args={"id": self.id},
+                command="listRemove",
             )
 
         with self._client.as_atomic_transaction():
             # Mark the block as inactive
-            self._client.submit_transaction(
-                build_operation(
-                    id=self.id, path=[], args={"alive": False}, command="update"
-                )
+            self._client.build_and_submit_transaction(
+                block_id=self.id, path="", args={"alive": False}, command="update"
             )
 
             # Remove the block's ID from a list on its parent, if needed
-            if self.parent.child_list_key:
-                self._client.submit_transaction(
-                    build_operation(
-                        id=self.parent.id,
-                        path=[self.parent.child_list_key],
-                        args={"id": self.id},
-                        command="listRemove",
-                        table=self.parent._table,
-                    )
+            if self.parent._child_list_key:
+                self._client.build_and_submit_transaction(
+                    block_id=self.parent.id,
+                    path=self.parent._child_list_key,
+                    args={"id": self.id},
+                    command="listRemove",
+                    table=self.parent._table,
                 )
 
         if permanently:
-            self._client.post(
-                "deleteBlocks", {"blockIds": [self.id], "permanentlyDelete": True}
-            )
+            data = {"blockIds": [self.id], "permanentlyDelete": True}
+            self._client.post("deleteBlocks", data=data)
             del self._client._store._values["block"][self.id]
 
     def move_to(self, target_block: "Block", position="last-child"):
-        assert position in ["first-child", "last-child", "before", "after"]
+        if position not in ["first-child", "last-child", "before", "after"]:
+            raise ValueError("Provided value for position is not valid.")
 
         if "child" in position:
             new_parent_id = target_block.id
@@ -234,40 +227,37 @@ class Block(Record):
         else:
             list_command = "listAfter"
 
-        list_args = {"id": self.id}
+        args = {"id": self.id}
         if position in ["before", "after"]:
-            list_args[position] = target_block.id
+            args[position] = target_block.id
 
         with self._client.as_atomic_transaction():
-
-            # First, remove the node, before we re-insert and re-activate it at the target location
+            # First, remove the node, before we re-insert
+            # and re-activate it at the target location
             self.remove()
 
             if not self.is_alias:
-                # Set the parent_id of the moving block to the new parent, and mark it as active again
-                self._client.submit_transaction(
-                    build_operation(
-                        id=self.id,
-                        path=[],
-                        args={
-                            "alive": True,
-                            "parent_id": new_parent_id,
-                            "parent_table": new_parent_table,
-                        },
-                        command="update",
-                    )
+                # Set the parent_id of the moving block to the new parent,
+                # and mark it as active again
+                self._client.build_and_submit_transaction(
+                    block_id=self.id,
+                    path="",
+                    args={
+                        "alive": True,
+                        "parent_id": new_parent_id,
+                        "parent_table": new_parent_table,
+                    },
+                    command="update",
                 )
             else:
                 self._alias_parent = new_parent_id
 
             # Add the moving block's ID to the "content" list of the new parent
-            self._client.submit_transaction(
-                build_operation(
-                    id=new_parent_id,
-                    path=["content"],
-                    args=list_args,
-                    command=list_command,
-                )
+            self._client.build_and_submit_transaction(
+                block_id=new_parent_id,
+                path="content",
+                args=args,
+                command=list_command,
             )
 
         # update the local block cache to reflect the updates
@@ -290,16 +280,15 @@ class Block(Record):
         locked : bool
             Whether or not to lock the block.
         """
-        args = dict(block_locked=locked, block_locked_by=self._client.current_user.id)
+        user_id = self._client.current_user.id
+        args = {"block_locked": locked, "block_locked_by": user_id}
 
         with self._client.as_atomic_transaction():
-            self._client.submit_transaction(
-                build_operation(
-                    id=self.id,
-                    path=["format"],
-                    args=args,
-                    command="update",
-                )
+            self._client.build_and_submit_transaction(
+                block_id=self.id,
+                path="format",
+                args=args,
+                command="update",
             )
 
         # update the local block cache to reflect the updates
