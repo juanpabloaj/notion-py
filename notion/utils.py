@@ -25,6 +25,25 @@ class InvalidNotionIdentifier(Exception):
     pass
 
 
+def to_list(value) -> list:
+    """
+    Wrap value in list if it's not already in a list.
+
+
+    Arguments
+    ---------
+    value : Any
+        Value to wrap in list.
+
+
+    Returns
+    -------
+    list
+        List with value inside.
+    """
+    return value if isinstance(value, list) else [value]
+
+
 def now() -> int:
     """
     Get UNIX-style time since epoch in seconds.
