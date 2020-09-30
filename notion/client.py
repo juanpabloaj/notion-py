@@ -24,12 +24,11 @@ from notion.block.types import get_block_type, get_collection_view_type
 from notion.logger import logger
 from notion.monitor import Monitor
 from notion.operations import operation_update_last_edited, build_operation
-from notion.record import Record
 from notion.settings import API_BASE_URL
 from notion.space import NotionSpace
 from notion.store import RecordStore
 from notion.user import NotionUser
-from notion.utils import extract_id, now
+from notion.utils import extract_id, now, to_list
 
 
 class NotionApiError(Exception):
@@ -101,8 +100,6 @@ class NotionClient:
     Create an instance of this class, passing it
     the value of the "token_v2" cookie from a logged-in
     browser session on Notion.so.
-
-    Most of the methods on here are for internal use.
     """
 
     def __init__(
@@ -146,14 +143,15 @@ class NotionClient:
         self.session = self._create_session(token_v2)
 
         # noinspection InsecureHash
-        # TODO: ^, can we do something about it?
         cache_key = cache_key or hashlib.sha256(token_v2.encode()).hexdigest()
         cache_key = cache_key if enable_caching else None
         self._store = RecordStore(self, cache_key=cache_key)
 
-        self._monitor = Monitor(self) if enable_monitoring else None
-        if enable_monitoring and start_monitoring:
-            self.start_monitoring()
+        self._monitor = None
+        if enable_monitoring:
+            self._monitor = Monitor(self)
+            if start_monitoring:
+                self.start_monitoring()
 
         if token_v2:
             self._update_user_info()
@@ -199,31 +197,6 @@ class NotionClient:
         return session
 
     @staticmethod
-    def _get_task_id(response: Response) -> str:
-        """
-        Helper method for getting the task ID of a export job.
-
-        When you export a file, notion creates a task to make
-        the file with the 'enqueueTask' endpoint. Then another
-        method looks at the task ID and returns the file when
-        the task finishes. So, we need to save the taskId
-        into a variable. This is a helper function to do that.
-
-
-        Arguments
-        ---------
-        response : Response
-            Response object after successful API call.
-
-
-        Returns
-        -------
-        str
-            Task ID.
-        """
-        return response.json()["taskId"]
-
-    @staticmethod
     def _download_url(url: str, save_path: str, chunk_size: int = 128):
         """
         Download the zip file and save it to a file.
@@ -244,9 +217,7 @@ class NotionClient:
             Defaults to 128.
 
 
-        See Also
-        --------
-        Source from https://requests.readthedocs.io/en/master/user/quickstart/#raw-response-content
+        https://requests.readthedocs.io/en/master/user/quickstart/#raw-response-content
         """
         chunk_size = None if chunk_size == 0 else chunk_size
 
@@ -286,11 +257,15 @@ class NotionClient:
         dict
             User data.
         """
-        records = self.post("loadUserContent", {}).json()["recordMap"]
-        self._store.store_recordmap(records)
-        self.current_user = self.get_user(list(records["notion_user"].keys())[0])
-        self.current_space = self.get_space(list(records["space"].keys())[0])
-        return records
+        data = self.post("loadUserContent").json()
+        data = self._store.store_record_map(data)
+
+        first_user = list(data["notion_user"].keys())[0]
+        first_space = list(data["space"].keys())[0]
+        self.current_user = self.get_user(first_user)
+        self.current_space = self.get_space(first_space)
+
+        return data
 
     def get_top_level_pages(self) -> list:
         """
@@ -357,25 +332,24 @@ class NotionClient:
             Found block or None.
         """
         block_id = extract_id(url_or_id)
-        block = self.get_record_data("block", block_id, force_refresh=force_refresh)
+        block = self.get_record_data("block", block_id, force_refresh)
 
         if not block:
             return None
-
-        klass = None
 
         if block.get("parent_table") == "collection":
             if block.get("is_template"):
                 klass = TemplateBlock
             else:
-                # TODO: this class does not inherit from Block, what's the difference?
                 klass = CollectionRowBlock
         else:
             klass = get_block_type(block.get("type"))
 
         return klass(client=self, block_id=block_id)
 
-    def get_collection(self, collection_id: str, force_refresh: bool = False):
+    def get_collection(
+        self, collection_id: str, force_refresh: bool = False
+    ) -> Optional[CollectionBlock]:
         """
         Retrieve an instance of Collection that maps to
         the collection identified by the ID passed in.
@@ -393,7 +367,7 @@ class NotionClient:
 
         Returns
         -------
-        Collection
+        CollectionBlock
             Found collection or None.
         """
         record_data = self.get_record_data(
@@ -403,20 +377,19 @@ class NotionClient:
         if record_data:
             return CollectionBlock(self, collection_id)
 
-        return None
-
     def get_collection_view(
         self,
         url_or_id: str,
         collection: CollectionBlock = None,
         force_refresh: bool = False,
-    ) -> CollectionView:
+    ) -> Optional[CollectionView]:
         """
         Retrieve an instance of a subclass of CollectionView
         that maps to the appropriate type.
 
-        The `url_or_id` argument can either be the URL for a database page,
-        or the ID of a collection_view (in which case you must also pass the collection)
+        The `url_or_id` argument can either be the URL
+        for a database page, or the ID of a collection_view
+        (in which case you must pass the collection)
 
 
         Arguments
@@ -443,24 +416,29 @@ class NotionClient:
         CollectionView
             Found collectionView or None.
         """
-        # if it's a URL for a database page, try extracting the collection and view IDs
         if url_or_id.startswith("http"):
+            # if it's a URL for a database page,
+            # try extracting the collection and view IDs
             match = re.search(r"([a-f0-9]{32})\?v=([a-f0-9]{32})", url_or_id)
             if not match:
                 raise InvalidCollectionViewUrl(
-                    f"Couldn't find valid ID in URL {url_or_id}"
+                    f"Could not find valid ID in URL '{url_or_id}'"
                 )
 
-            block_id, view_id = match.groups()
-            collection = self.get_block(
-                block_id, force_refresh=force_refresh
-            ).collection
+            collection_id, view_id = match.groups()
+            #            collection = self.get_block(
+            #                collection_id, force_refresh=force_refresh
+            #            ).collection
+            # TODO: this should've been used in the first place but I've not
+            #       tested it
+            collection = self.get_collection(collection_id, force_refresh)
         else:
             view_id = url_or_id
 
             if collection is None:
-                raise Exception(
-                    "If 'url_or_id' is an ID (not a URL), you must also pass the 'collection'"
+                raise ValueError(
+                    "If 'url_or_id' is an ID (not a URL), "
+                    "you must also pass the 'collection'"
                 )
 
         view = self.get_record_data(
@@ -471,9 +449,9 @@ class NotionClient:
             klass = get_collection_view_type(view.get("type", ""))
             return klass(self, view_id, collection=collection)
 
-        return None
-
-    def get_user(self, user_id: str, force_refresh: bool = False):
+    def get_user(
+        self, user_id: str, force_refresh: bool = False
+    ) -> Optional[NotionUser]:
         """
         Retrieve an instance of User that maps to
         the notion_user identified by the ID passed in.
@@ -494,10 +472,13 @@ class NotionClient:
         NotionUser
             Found user or None.
         """
-        user = self.get_record_data("notion_user", user_id, force_refresh=force_refresh)
-        return NotionUser(self, user_id) if user else None
+        user = self.get_record_data("notion_user", user_id, force_refresh)
+        if user:
+            return NotionUser(self, user_id)
 
-    def get_space(self, space_id: str, force_refresh: bool = False):
+    def get_space(
+        self, space_id: str, force_refresh: bool = False
+    ) -> Optional[NotionSpace]:
         """
         Retrieve an instance of Space that maps to
         the space identified by the ID passed in.
@@ -515,11 +496,12 @@ class NotionClient:
 
         Returns
         -------
-        Space
+        NotionSpace
             Found space or None.
         """
-        space = self.get_record_data("space", space_id, force_refresh=force_refresh)
-        return NotionSpace(self, space_id) if space else None
+        space = self.get_record_data("space", space_id, force_refresh)
+        if space:
+            return NotionSpace(self, space_id)
 
     def start_monitoring(self):
         """
@@ -534,7 +516,8 @@ class NotionClient:
         The keyword arguments map table names into
         lists of (or singular) record IDs to load for that table.
 
-        Use `True` instead of a list to refresh all known records for that table.
+        Use `True` instead of a list to refresh
+        all known records for that table.
         """
         self._store.call_get_record_values(**kwargs)
 
@@ -548,7 +531,8 @@ class NotionClient:
         collection_id : str
             ID of the collection.
         """
-        row_ids = [row.id for row in self.get_collection(collection_id).get_rows()]
+        collection = self.get_collection(collection_id)
+        row_ids = [row.id for row in collection.get_rows()]
         self._store.set_collection_rows(collection_id, row_ids)
 
     def download_block(
@@ -556,20 +540,13 @@ class NotionClient:
         block_id: str,
         recursive: bool = False,
         export_type: str = "markdown",
-        event_name: str = "exportBlock",
         time_zone: str = "America/Chicago",
         locale: str = "en",
-    ) -> bool:
+    ):
         """
         Download block.
 
-        TODO: If export_type are 'pdf' or 'html', there is another field
-              in exportOptions called 'pdfFormat'. It should be set to "Letter".
-              This needs to be implemented.
-
         TODO: Add support for downloading a list of blocks.
-
-        TODO: Review this code. Does it suck? Error handling?
 
 
         Arguments
@@ -586,12 +563,6 @@ class NotionClient:
             The options are "markdown", "pdf", "html".
             Defaults to "markdown".
 
-        event_name : str, optional
-            Notion object you're exporting.
-            I haven't seen anything other than exportBlock yet.
-            Defaults to "exportBlock".
-            TODO: ^ hard code?
-
         time_zone : str, optional
             I don't know what values go here. I'm in the Chicago
             timezone (central) and this is what I saw in the request.
@@ -601,16 +572,10 @@ class NotionClient:
         locale : str, optional
             Locale for the export.
             Defaults to "en".
-
-
-        Returns
-        -------
-        bool
-            True if succeeded. False otherwise.
         """
         data = {
             "task": {
-                "eventName": event_name,
+                "eventName": "exportBlock",
                 "request": {
                     "blockId": block_id,
                     "recursive": recursive,
@@ -623,12 +588,15 @@ class NotionClient:
             }
         }
 
+        if export_type in ["pdf", "html"]:
+            opts = data["task"]["request"]["exportOptions"]
+            opts["pdfFormat"] = "Letter"
+
         def fetch():
             time.sleep(0.1)
             return self.post("getTasks", {"taskIds": task_ids}).json()
 
-        # TODO: error handling
-        task_ids = [self._get_task_id(self.post("enqueueTask", data))]
+        task_ids = [self.post("enqueueTask", data).json()["taskId"]]
         task = fetch()
 
         # Ensure that we're getting the data when it's ready.
@@ -638,16 +606,12 @@ class NotionClient:
         while "exportURL" not in task["results"][0]["status"]:
             task = fetch()
 
+        tmp_zip = f"{block_id}.zip"
         url = task["results"][0]["status"]["exportURL"]
-
-        tmp_zip = "tmp.zip"
         self._download_url(url, tmp_zip)
         self._unzip_file(tmp_zip)
 
-        # TODO: that's a lie
-        return True
-
-    def post(self, endpoint: str, data: dict) -> Response:
+    def post(self, endpoint: str, data: dict = None) -> Response:
         """
         Send HTTP POST request to given endpoint.
 
@@ -673,7 +637,7 @@ class NotionClient:
         NotionUnauthorizedError
             When POST fails with HTTP 401.
 
-        NotionException
+        NotionApiError
             When POST fails in a different way.
 
 
@@ -682,24 +646,22 @@ class NotionClient:
         Response
             Whatever API sent back.
         """
+        data = data or {}
         url = urljoin(API_BASE_URL, endpoint)
-        response = self.session.post(url, json=data or {})
+        response = self.session.post(url, json=data)
         code = response.status_code
         res_data = response.json()
 
         if code < 400:
             return response
 
-        msg = res_data.get("message") or "[No message was supplied]"
+        msg = res_data.get("message") or "<message was not provided>"
 
         if code == 400:
             raise NotionValidationError(msg, extra=res_data)
 
         if code == 401:
             raise NotionUnauthorizedError(msg, extra=res_data)
-
-        if code == 504:  # Gateway timeout
-            raise NotionApiError(msg, extra=res_data)
 
         raise NotionApiError(msg, extra=res_data)
 
@@ -722,8 +684,7 @@ class NotionClient:
         if not operations:
             return
 
-        if isinstance(operations, dict):
-            operations = [operations]
+        operations = to_list(operations)
 
         if update_last_edited:
             updated_blocks = set(
@@ -741,7 +702,12 @@ class NotionClient:
 
         else:
             self.post("submitTransaction", data={"operations": operations})
-            self._store.run_local_operations(operations)
+            for operation in operations:
+                operation["record_id"] = operation.pop("id")
+                self._store.run_local_operation(**operation)
+
+    def build_and_submit_transaction(self, *args, **kwargs):
+        self.submit_transaction(build_operation(*args, **kwargs))
 
     def as_atomic_transaction(self) -> Transaction:
         """
@@ -781,7 +747,7 @@ class NotionClient:
 
         limit : int, optional
             Max number of pages to return.
-            Defaults to 10 000.
+            Defaults to 10_000.
 
 
         Returns
@@ -796,7 +762,8 @@ class NotionClient:
             "limit": limit,
         }
         data = self.post("searchPagesWithParent", data).json()
-        self._store.store_recordmap(data["recordMap"])
+        self._store.store_record_map(data)
+
         return data["results"]
 
     def search_blocks(self, search: str, limit: int = 25) -> list:
@@ -826,10 +793,11 @@ class NotionClient:
             "limit": limit,
         }
         data = self.post("searchBlocks", data).json()
-        self._store.store_recordmap(data["recordMap"])
+        self._store.store_record_map(data)
+
         return [self.get_block(bid) for bid in data["results"]]
 
-    def create_record(self, table: str, parent: Record, **kwargs):
+    def create_record(self, table: str, parent: Block, **kwargs):
         """
         Create new record.
 
@@ -839,7 +807,7 @@ class NotionClient:
         table : str
             Table value.
 
-        parent : Record
+        parent : Block
             Parent for the newly created record.
 
 
@@ -864,24 +832,18 @@ class NotionClient:
         }
 
         with self.as_atomic_transaction():
-
-            # create the new record
-            self.submit_transaction(
-                build_operation(
-                    args=args, command="set", id=record_id, path=[], table=table
-                )
+            self.build_and_submit_transaction(
+                block_id=record_id, path="", args=args, command="set", table=table
             )
 
             # add the record to the content list of the parent, if needed
             if child_list_key:
-                self.submit_transaction(
-                    build_operation(
-                        id=parent.id,
-                        path=[child_list_key],
-                        args={"id": record_id},
-                        command="listAfter",
-                        table=parent._table,
-                    )
+                self.build_and_submit_transaction(
+                    block_id=parent.id,
+                    path=child_list_key,
+                    args={"id": record_id},
+                    command="listAfter",
+                    table=parent._table,
                 )
 
         return record_id
