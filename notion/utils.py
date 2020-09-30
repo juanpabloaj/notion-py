@@ -12,7 +12,6 @@ from notion.settings import (
     BASE_URL,
     SIGNED_URL_PREFIX,
     S3_URL_PREFIX,
-    S3_URL_PREFIX_ENCODED,
     EMBED_API_URL,
 )
 
@@ -228,27 +227,20 @@ def remove_signed_prefix_as_needed(url: str) -> str:
     str
         Non-prefixed URL.
     """
-    if not url:
-        return ""
-
     if url.startswith(SIGNED_URL_PREFIX):
-        return unquote_plus(url[len(S3_URL_PREFIX) :])
+        url = unquote_plus(url[len(S3_URL_PREFIX) :])
 
-    if url.startswith(S3_URL_PREFIX_ENCODED):
-        parsed = urlparse(url.replace(S3_URL_PREFIX_ENCODED, S3_URL_PREFIX))
-        return f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
-
-    return url
+    return url or ""
 
 
-def slugify(original: str) -> str:
+def slugify(text: str) -> str:
     """
     Convert text to computer-friendly simplified form.
 
 
     Arguments
     ---------
-    original : str
+    text : str
         String to operate on.
 
 
@@ -257,10 +249,10 @@ def slugify(original: str) -> str:
     str
         Converted string.
     """
-    return _dash_slugify(original).replace("-", "_")
+    return _dash_slugify(text).replace("-", "_")
 
 
-def get_by_path(path: Union[Iterable, str], obj: Any, default: Any = None):
+def get_by_path(path: Union[Iterable, str], obj: Any, default: Any = None) -> Any:
     """
     Get value from object's key by dotted path (i.e. "path.to.some.key").
 
@@ -280,7 +272,8 @@ def get_by_path(path: Union[Iterable, str], obj: Any, default: Any = None):
 
     Returns
     -------
-    Value stored under specified key or default value.
+    Any
+        Value stored under specified key or default value.
     """
     if isinstance(path, str):
         path = path.split(".")
