@@ -184,6 +184,90 @@ The long-polling happens in a background daemon thread.
   into `get_block()` as well.
 
 
+
+## Working on a Pull Request
+
+You'll need `git` and `python3` with `venv` module.  
+
+
+Best way to start is to clone the repo and prepare the `.env` file.
+This step is optional but nice to have to create healthy python venv.
+
+```bash
+git https://github.com/arturtamborski/notion-py
+
+cd notion-py
+
+cp .env.example .env
+vim .env
+```
+
+You should modify the variables as following:
+```bash
+# see above for info on how to get it
+NOTION_TOKEN_V2="insert your token_v2 here"
+
+# used in smoke tests
+NOTION_PAGE_URL="insert URL from some notion page here"
+
+# set it to any level from python logging library
+NOTION_LOG_LEVEL="DEBUG" 
+
+# the location for cache, defaults to current directory
+NOTION_DATA_DIR=".notion-py"
+```
+
+And then load that file (which will also create local venv):
+```bash
+source .env
+```
+
+On top of that there's a handy toolbox provided to you via `Makefile`.
+Everything related to the development of the project relies heavily on
+the interface it provides.
+
+You can display all commands by running
+```bash
+make help
+```
+
+Which should print a nice list of commands avaiable to you.
+These are compatible with the Github Actions (CI system),
+in fact the actions are using Makefile directly for formatting
+and other steps so everything that Github might show you
+under your Pull Request can be reproduced locally via Makefile.
+
+
+Also, there's one very handy shortcut that I'm using all the
+time when testing the library with smoke tests.
+
+This command will run a single test unit that you point at
+by passing an argument to `make try-smoke-test` like so:
+
+```bash
+make try-smoke-test smoke_tests/test_workflow.py::test_workflow_1
+```
+
+That's super handy when you run some smoke tests and see the failed output:
+```
+============================= short test summary info =============================
+ERROR smoke_tests/block/test_basic.py::test_block - KeyboardInterrupt
+!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!! _pytest.outcomes.Exit: Quitting debugger !!!!!!!!!!!!!!!!!!!!!
+================================ 1 error in 32.90s ================================
+make: *** [Makefile:84: try-smoke-test] Error 2
+```
+
+Notice that `ERROR smoke_tests/...test_basic.py::test_block` - just copy it over
+as a command argument and run it again - you'll run this and only this one test!
+
+```bash
+make try-smoke-test smoke_tests/block/test_basic.py::test_block
+```
+
+
+
+
 ## Examples
 
 <details>
