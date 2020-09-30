@@ -1,7 +1,6 @@
 from copy import deepcopy
 from typing import List, Callable, Union, Iterable, Any
 
-from notion.operations import build_operation
 from notion.settings import BASE_URL
 from notion.store import Callback
 from notion.utils import extract_id, get_by_path
@@ -40,16 +39,16 @@ class Record:
             String with details about the object.
         """
         fields = {}
+        klass_chain = self.__class__.__mro__[:-1]
 
-        # go trough the inheritance chain but skip the `<type>`
-        for klass in reversed(self.__class__.__mro__[:-1]):
+        for klass in reversed(klass_chain):
             for f in self._get_str_fields(klass):
                 v = getattr(self, f)
                 if v:
                     fields[f] = f"{f}={repr(v)}"
 
-        # skip printing type if its other than the default
-        if self._type == "" or self._type == "block":
+        # skip printing type if its something else than just a Block
+        if getattr(klass_chain[0], "_type", "") != "block":
             fields.pop("type", None)
 
         return ", ".join(fields.values())
@@ -104,10 +103,15 @@ class Record:
 
     @staticmethod
     def _get_str_fields(klass) -> list:
-        if not hasattr(klass, "_str_fields"):
-            return []
+        """
+        Get list of fields that should be used for printing the Record.
 
-        str_fields = getattr(klass, "_str_fields")
+        Returns
+        -------
+        list
+            List of strings.
+        """
+        str_fields = getattr(klass, "_str_fields", [])
 
         if isinstance(str_fields, str):
             return [str_fields]
@@ -183,7 +187,8 @@ class Record:
 
     @property
     def space_info(self):
-        return self._client.post("getPublicPageData", {"blockId": self.id}).json()
+        data = {"blockId": self.id}
+        return self._client.post("getPublicPageData", data=data).json()
 
     @property
     def url(self) -> str:
@@ -198,7 +203,6 @@ class Record:
         """
         return f'{BASE_URL}{self.id.replace("-", "")}'
 
-    # TODO: is it needed?
     @property
     def id(self) -> str:
         """
@@ -242,7 +246,8 @@ class Record:
             Defaults to random UUID string.
 
         extra_kwargs : dict, optional
-            Additional information that should be passed to callback when executed.
+            Additional information that should be passed
+            to callback when executed.
             Defaults to empty dict.
 
 
@@ -270,14 +275,17 @@ class Record:
         if cb_or_cb_id_prefix is None:
             for callback_obj in list(self._callbacks):
                 self._client._store.remove_callbacks(
-                    self._table, self.id, callback_or_callback_id_prefix=callback_obj
+                    table=self._table,
+                    record_id=self.id,
+                    cb_or_cb_id_prefix=callback_obj,
                 )
             self._callbacks = []
+
         else:
             self._client._store.remove_callbacks(
-                self._table,
-                self.id,
-                callback_or_callback_id_prefix=cb_or_cb_id_prefix,
+                table=self._table,
+                record_id=self.id,
+                cb_or_cb_id_prefix=cb_or_cb_id_prefix,
             )
             if cb_or_cb_id_prefix in self._callbacks:
                 self._callbacks.remove(cb_or_cb_id_prefix)
@@ -318,7 +326,7 @@ class Record:
             default=default,
         )
 
-    def set(self, path, value):
+    def set(self, path: str, value):
         """
         Set a specific `value` under the specific `path`
         on the record's data structure on the server.
@@ -326,14 +334,18 @@ class Record:
 
         Arguments
         ---------
-        path : list of str or str
+        path : str
             Specifies the field to which set the value.
 
-        value
+        value : Any
             Value to set under provided path.
         """
-        self._client.submit_transaction(
-            build_operation(id=self.id, path=path, args=value, table=self._table)
+        self._client.build_and_submit_transaction(
+            block_id=self.id,
+            path=path,
+            args=value,
+            command="set",
+            table=self._table,
         )
 
     def refresh(self):
