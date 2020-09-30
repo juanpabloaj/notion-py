@@ -39,8 +39,7 @@ class Block(Record):
     # we'll mark it as an alias if we load the Block
     # as a child of a page that is not its parent
     _alias_parent = None
-
-    child_list_key = "content"
+    _child_list_key = "content"
 
     type = field_map("type")
     alive = field_map("alive")

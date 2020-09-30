@@ -4,13 +4,12 @@ from typing import Union
 from notion.block.basic import Block
 from notion.block.types import get_block_type
 from notion.logger import logger
-from notion.operations import build_operation
 from notion.utils import extract_id
 
 
 class Children:
 
-    child_list_key = "content"
+    _child_list_key = "content"
 
     def __init__(self, parent):
         self._parent = parent
@@ -25,7 +24,7 @@ class Children:
         return kids
 
     def _content_list(self) -> list:
-        return self._parent.get(self.child_list_key) or []
+        return self._parent.get(self._child_list_key) or []
 
     def _get_block(self, url_or_id: str):
         # NOTE: this is needed because there seems to be a server-side
@@ -69,7 +68,7 @@ class Children:
         self._get_block(self._content_list()[key]).remove()
 
     def __iter__(self):
-        return iter(self._get_block(block_id) for block_id in self._content_list())
+        return iter(self._get_block(bid) for bid in self._content_list())
 
     def __reversed__(self):
         return reversed(list(self))
@@ -104,13 +103,12 @@ class Children:
         Block
             Instance of added block.
         """
-
-        # determine the block type string from the Block class, if that's what was provided
+        # determine the block type string from the Block class, if provided
         is_a_valid_block = isinstance(block, type) and issubclass(block, Block)
         is_a_valid_block = is_a_valid_block and hasattr(block, "_type")
         if not is_a_valid_block:
             raise ValueError(
-                "block argument must be a a Block subclass with a _type attribute"
+                "block argument must be a Block subclass with a _type attribute"
             )
 
         block_id = self._client.create_record(
@@ -129,16 +127,15 @@ class Children:
                         setattr(block, key, val)
                     else:
                         logger.warning(
-                            "{} does not have attribute '{}' to be set; skipping.".format(
-                                block, key
-                            )
+                            f"{block} does not have attribute '{key}'; skipping."
                         )
 
         return block
 
     def add_alias(self, block: Block) -> Block:
         """
-        Adds an alias to the provided `block`, i.e. adds the block's ID to the parent's content list,
+        Adds an alias to the provided `block`, i.e. adds
+        the block's ID to the parent's content list,
         but doesn't change the block's parent_id.
 
 
@@ -154,14 +151,11 @@ class Children:
             Aliased block.
         """
 
-        # add the block to the content list of the parent
-        self._client.submit_transaction(
-            build_operation(
-                id=self._parent.id,
-                path=[self.child_list_key],
-                args={"id": block.id},
-                command="listAfter",
-            )
+        self._client.build_and_submit_transaction(
+            block_id=self._parent.id,
+            path=self._child_list_key,
+            args={"id": block.id},
+            command="listAfter",
         )
 
         return self._get_block(block.id)
@@ -174,14 +168,14 @@ class Templates(Children):
     TODO: what? what does that even mean to user?
     """
 
-    child_list_key = "template_pages"
+    _child_list_key = "template_pages"
 
     def _content_list(self):
-        return self._parent.get(self.child_list_key) or []
+        return self._parent.get(self._child_list_key) or []
 
     def add_new(self, **kwargs):
         kwargs["block_type"] = "page"
-        kwargs["child_list_key"] = self.child_list_key
+        kwargs["child_list_key"] = self._child_list_key
         kwargs["is_template"] = True
 
         return super().add_new(**kwargs)

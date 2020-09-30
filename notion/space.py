@@ -14,8 +14,7 @@ class NotionSpace(Record):
     _type = "space"
     _table = "space"
     _str_fields = "name", "domain"
-
-    child_list_key = "pages"
+    _child_list_key = "pages"
 
     name = field_map("name")
     domain = field_map("domain")
@@ -23,15 +22,16 @@ class NotionSpace(Record):
 
     @property
     def pages(self):
-        # The page list includes pages the current user might not have permissions on, so it's slow to query.
+        # The page list includes pages the current user
+        # might not have permissions on, so it's slow to query.
         # Instead, we just filter for pages with the space as the parent.
         return self._client.search_pages_with_parent(self.id)
 
     @property
     def users(self):
-        user_ids = [permission["user_id"] for permission in self.get("permissions")]
-        self._client.refresh_records(notion_user=user_ids)
-        return [self._client.get_user(user_id) for user_id in user_ids]
+        ids = [permission["user_id"] for permission in self.get("permissions")]
+        self._client.refresh_records(notion_user=ids)
+        return [self._client.get_user(uid) for uid in ids]
 
     def add_page(
         self, title, type: str = "page", shared: bool = False

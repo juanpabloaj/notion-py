@@ -3,13 +3,12 @@ import time
 from notion.block.children import Children
 
 
-# TODO: rename to CollectionViews?
 class CollectionViewBlockViews(Children):
     """
     Collection View Block Views.
     """
 
-    child_list_key = "view_ids"
+    _child_list_key = "view_ids"
 
     def _get_block(self, view_id):
         view = self._client.get_collection_view(
@@ -32,9 +31,8 @@ class CollectionViewBlockViews(Children):
     def add_new(self, view_type="table"):
         if not self._parent.collection:
             raise Exception(
-                "Collection view block does not have an associated collection: {}".format(
-                    self._parent
-                )
+                "Collection view block does not have an "
+                f"associated collection: {self._parent}"
             )
 
         record_id = self._client.create_record(
@@ -44,11 +42,11 @@ class CollectionViewBlockViews(Children):
             record_id, collection=self._parent.collection
         )
         view.set("collection_id", self._parent.collection.id)
-        view_ids = self._parent.get(CollectionViewBlockViews.child_list_key, [])
-        view_ids.append(view.id)
-        self._parent.set(CollectionViewBlockViews.child_list_key, view_ids)
+        views = self._parent.get(CollectionViewBlockViews._child_list_key, [])
+        views.append(view.id)
+        self._parent.set(CollectionViewBlockViews._child_list_key, views)
 
-        # At this point, the view does not seem to be completely initialized yet.
+        # At this point, the view does not seem to be completely initialized yet
         # Hack: wait a bit before e.g. setting a query.
         # Note: temporarily disabling this sleep to see if the issue reoccurs.
         # time.sleep(3)

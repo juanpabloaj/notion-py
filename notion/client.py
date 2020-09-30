@@ -817,7 +817,7 @@ class NotionClient:
         """
         # make up a new UUID; apparently we get to choose our own!
         record_id = str(uuid.uuid4())
-        child_list_key = kwargs.get("child_list_key") or parent.child_list_key
+        child_list_key = kwargs.get("child_list_key", parent._child_list_key)
 
         args = {
             "id": record_id,
