@@ -11,7 +11,7 @@ author = __author__
 release = __version__
 copyright = f"{date.today().year}, {__author__}"
 
-html_baseurl = "arturtamborski.pl"
+html_baseurl = "notion-py.readthedocs.io"
 html_theme = "sphinx_rtd_theme"
 
 extensions = [
