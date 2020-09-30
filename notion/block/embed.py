@@ -16,7 +16,6 @@ class EmbedBlock(MediaBlock):
     _type = "embed"
     _str_fields = "source"
 
-    # TODO: why this exists? is it the same as `source`?
     display_source = prefixed_field_map("format.display_source")
     source = prefixed_property_map("source")
     height = field_map("format.block_height")

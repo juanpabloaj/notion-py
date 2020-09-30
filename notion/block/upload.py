@@ -14,7 +14,7 @@ class UploadBlock(EmbedBlock):
     Upload Block.
     """
 
-    file_id = field_map(["file_ids", 0])
+    file_id = field_map("file_ids.0")
 
     def upload_file(self, path: str):
         """

@@ -1,13 +1,11 @@
-from typing import Union, Iterable
-
 from notion.utils import now
 
 
 def build_operation(
-    id: str,
-    path: Union[Iterable, str],
-    args,
-    command: str = "set",
+    block_id: str,
+    path: str,
+    args: dict,
+    command: str,
     table: str = "block",
 ) -> dict:
     """
@@ -16,19 +14,17 @@ def build_operation(
 
     Arguments
     ---------
-    id : str
+    block_id : str
         ID of the object.
 
-    path : list of str or str
+    path : str
         Key for the object.
 
+    args : dict
+        Arguments.
 
-    args
-        Arguments?
-
-    command : str, optional
+    command : str
         Command to execute.
-        Defaults to "set".
 
     table : str, optional
         Table argument for endpoint.
@@ -40,10 +36,23 @@ def build_operation(
     dict
         Valid dict for the endpoint.
     """
-    if isinstance(path, str):
-        path = path.split(".")
 
-    return {"id": id, "path": path, "args": args, "command": command, "table": table}
+    def maybe_to_int(value):
+        try:
+            return int(value)
+        except ValueError:
+            return value
+
+    path = list(map(maybe_to_int, path.split(".")))
+    path = [] if path == [""] else path
+
+    return {
+        "id": block_id,
+        "path": path,
+        "args": args,
+        "command": command,
+        "table": table,
+    }
 
 
 def operation_update_last_edited(user_id, block_id) -> dict:
@@ -69,10 +78,9 @@ def operation_update_last_edited(user_id, block_id) -> dict:
     dict
         Constructed dict with last edited operation included.
     """
-    return {
-        "args": {"last_edited_by": user_id, "last_edited_time": now()},
-        "command": "update",
-        "id": block_id,
-        "path": [],
-        "table": "block",
-    }
+    return build_operation(
+        block_id=block_id,
+        path="",
+        args={"last_edited_by": user_id, "last_edited_time": now()},
+        command="update",
+    )

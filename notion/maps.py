@@ -1,5 +1,5 @@
 from inspect import signature
-from typing import Union, Iterable, Callable
+from typing import Callable
 
 from notion.markdown import (
     markdown_to_notion,
@@ -7,7 +7,10 @@ from notion.markdown import (
     plaintext_to_notion,
     notion_to_plaintext,
 )
-from notion.utils import add_signed_prefix_as_needed, remove_signed_prefix_as_needed
+from notion.utils import (
+    add_signed_prefix_as_needed,
+    remove_signed_prefix_as_needed,
+)
 
 
 class Mapper(property):
@@ -17,11 +20,11 @@ class Mapper(property):
 
     def __init__(
         self,
-        path: Union[Iterable[str], str],
+        path: str,
         python_to_api: Callable,
         api_to_python: Callable,
         *args,
-        **kwargs
+        **kwargs,
     ):
         """
         Create mapper object and fill its fields.
@@ -29,10 +32,9 @@ class Mapper(property):
 
         Arguments
         ---------
-        path : Iterable of str or str
-            Path can either be a top-level field-name,
-            a list that specifies the key names to traverse,
-            or a dot-delimited string representing the same traversal.
+        path : str
+            Path can either be a top-level field-name or a
+            dot-delimited string representing the key names to traverse.
 
         python_to_api : Callable
             Function that converts values as given in the Python layer
@@ -42,14 +44,14 @@ class Mapper(property):
             Function that converts what is received from the API
             into an internal representation to be returned to the Python layer.
         """
+        self.path = path
         self.python_to_api = python_to_api
         self.api_to_python = api_to_python
-        self.path = ".".join(map(str, path)) if isinstance(path, Iterable) else path
         super().__init__(*args, **kwargs)
 
 
 def field_map(
-    path: Union[Iterable[str], str],
+    path: str,
     python_to_api: Callable = lambda x: x,
     api_to_python: Callable = lambda x: x,
 ) -> Mapper:
@@ -60,10 +62,9 @@ def field_map(
 
     Arguments
     ---------
-    path : Iterable of str or str
-        Path can either be a top-level field-name,
-        a list that specifies the key names to traverse,
-        or a dot-delimited string representing the same traversal.
+    path : str
+        Path can either be a top-level field-name or a
+        dot-delimited string representing the key names to traverse.
 
     python_to_api : Callable, optional
         Function that converts values as given in the Python layer into
@@ -84,19 +85,21 @@ def field_map(
 
     See Also
     --------
-        property_map
+    property_map
     """
 
     def fget(self):
         kwargs = {}
         if "client" in signature(api_to_python).parameters:
             kwargs["client"] = self._client
+
         return api_to_python(self.get(path), **kwargs)
 
     def fset(self, value):
         kwargs = {}
         if "client" in signature(python_to_api).parameters:
             kwargs["client"] = self._client
+
         self.set(path, python_to_api(value, **kwargs))
 
     return Mapper(
@@ -108,7 +111,7 @@ def field_map(
     )
 
 
-def prefixed_field_map(name: str):
+def prefixed_field_map(name: str) -> Mapper:
     """
     Arguments
     ---------
@@ -124,7 +127,7 @@ def prefixed_field_map(name: str):
 
     See Also
     --------
-        field_map
+    field_map
     """
     return field_map(
         name,
@@ -149,7 +152,7 @@ def nested_field_map(name: str) -> Mapper:
 
     See Also
     --------
-        field_map
+    field_map
     """
     return field_map(
         name,
@@ -162,7 +165,7 @@ def markdown_field_map(name: str) -> Mapper:
     """
     Arguments
     ---------
-    name : Iterable of str
+    name : str
         Name of the property.
 
 
@@ -174,7 +177,7 @@ def markdown_field_map(name: str) -> Mapper:
 
     See Also
     --------
-        field_map
+    field_map
     """
     return field_map(
         name, api_to_python=notion_to_markdown, python_to_api=markdown_to_notion
@@ -226,29 +229,34 @@ def property_map(
 
     See Also
     --------
-        field_map
+    field_map
     """
 
     def py2api(x, client=None):
         kwargs = {}
         if "client" in signature(python_to_api).parameters:
             kwargs["client"] = client
+
         x = python_to_api(x, **kwargs)
         if markdown:
             x = markdown_to_notion(x)
+
         return x
 
     def api2py(x, client=None):
         x = x or [[""]]
+
         if markdown:
             x = notion_to_markdown(x)
+
         kwargs = {}
         if "client" in signature(api_to_python).parameters:
             kwargs["client"] = client
+
         return api_to_python(x, **kwargs)
 
-    # TODO: rewrite so that name can be only str, not list
-    return field_map(["properties", name], python_to_api=py2api, api_to_python=api2py)
+    path = f"properties.{name}"
+    return field_map(path, python_to_api=py2api, api_to_python=api2py)
 
 
 def prefixed_property_map(name: str) -> Mapper:
@@ -267,7 +275,7 @@ def prefixed_property_map(name: str) -> Mapper:
 
     See Also
     --------
-        property_map
+    property_map
     """
     return property_map(
         name,
@@ -292,7 +300,7 @@ def plaintext_property_map(name: str) -> Mapper:
 
     See Also
     --------
-        property_map
+    property_map
     """
     return property_map(
         name,
@@ -318,45 +326,10 @@ def boolean_property_map(name: str) -> Mapper:
 
     See Also
     --------
-        property_map
+    property_map
     """
     return property_map(
         name,
         python_to_api=lambda x: "Yes" if x else "No",
         api_to_python=lambda x: x == "Yes",
     )
-
-
-def joint_map(*mappings: Mapper) -> property:
-    """
-    Combine multiple `field_map` and `property_map` instances
-    together to map an attribute to multiple API fields.
-
-    When "getting", the first one will be used.
-    When "setting", they will all be set in parallel.
-
-
-    Arguments
-    ---------
-    mappings : Iterable of Mapper
-
-
-    Returns
-    -------
-    property
-        Joint property.
-
-
-    See Also
-    --------
-        property_map
-    """
-
-    def fget(self):
-        return mappings[0].fget(self)
-
-    def fset(self, value):
-        for m in mappings:
-            m.fset(self, value)
-
-    return property(fget=fget, fset=fset)
