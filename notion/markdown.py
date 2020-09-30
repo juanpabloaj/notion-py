@@ -195,10 +195,10 @@ def markdown_to_notion(markdown: str) -> list:
     # consolidate any adjacent text blocks with identical styles
     consolidated = []
     for item in notion:
-        if consolidated:
-            fmt = _get_format(consolidated[-1], as_set=True)
-            if fmt == _get_format(item, as_set=True):
-                consolidated[-1][0] += item[0]
+        if consolidated and _get_format(consolidated[-1], as_set=True) == _get_format(
+            item, as_set=True
+        ):
+            consolidated[-1][0] += item[0]
         elif item[0]:
             consolidated.append(item)
 
@@ -331,8 +331,8 @@ def notion_to_plaintext(notion: list, client=None) -> str:
     Arguments
     ---------
     notion : list
-        List of Notion Blocks
-        TODO: is it true?
+        Text in a Notion specific API format
+        i. e [["some text"]]
 
     client : NotionClient, optional
         Used for getting blocks, if passed.
