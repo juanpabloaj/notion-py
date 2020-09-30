@@ -57,7 +57,7 @@ class Monitor:
         thing = thing.decode().strip()
 
         for ping in re.findall(r'\d+:\d+"primus::ping::\d+"', thing):
-            logger.debug("Received ping: {}".format(ping))
+            logger.debug(f"Received ping: {ping}")
             self.post_data(ping.replace("::ping::", "::pong::"))
 
         results = []
@@ -65,7 +65,7 @@ class Monitor:
             results.append(json.loads(blob))
 
         if thing and not results and "::ping::" not in thing:
-            logger.debug("Could not parse monitoring response: {}".format(thing))
+            logger.debug(f"Could not parse monitoring response: {thing}")
 
         return results
 
@@ -88,10 +88,12 @@ class Monitor:
                     continue
 
                 record_id, record_table = match.groups()
-                old = self.client._store.get_current_version(record_table, record_id)
-                new = event["value"]
-
                 name = f"{record_table}/{record_id}"
+                new = event["value"]
+                old = self.client._store.get_current_version(
+                    table=record_table, record_id=record_id
+                )
+
                 if new > old:
                     logger.debug(
                         (
@@ -121,8 +123,8 @@ class Monitor:
 
                 logger.debug(
                     (
-                        f"Something inside collection {collection_id} has changed"
-                        f"refreshing all {row_ids} rows inside it"
+                        f"Something inside collection '{collection_id}' "
+                        f"has changed. Refreshing all {row_ids} rows inside it"
                     )
                 )
 
@@ -197,7 +199,7 @@ class Monitor:
                     {
                         "type": "/api/v1/registerSubscription",
                         "requestId": str(uuid.uuid4()),
-                        "key": "collection/{}".format(record.id),
+                        "key": f"collection/{record.id}",
                         "version": -1,
                     }
                 )
@@ -243,7 +245,8 @@ class Monitor:
         while retries:
             try:
                 retries -= 1
-                response = self.client.session.get(self.url(EIO=3, sid=self.sid))
+                url = self.url(EIO=3, sid=self.sid)
+                response = self.client.session.get(url)
                 response.raise_for_status()
 
             except HTTPError as e:
@@ -253,7 +256,8 @@ class Monitor:
                     message = str(e)
 
                 logger.warn(
-                    f"Problem with submitting poll request: {message} (will retry {retries} more times)"
+                    "Problem with submitting poll request: "
+                    f"{message} (will retry {retries} more times)"
                 )
 
                 time.sleep(0.1)
@@ -262,11 +266,12 @@ class Monitor:
 
                 if retries <= 5:
                     logger.error(
-                        f"Persistent error submitting poll request: {message} (will retry {retries} more times)"
+                        "Persistent error submitting poll request: "
+                        f"{message} (will retry {retries} more times)"
                     )
 
                 if retries == 3:
-                    # if we're close to giving up, also try reinitializing the session
+                    # if we're close to giving up, try to restart the session
                     self.initialize()
 
         self._refresh_updated_records(
