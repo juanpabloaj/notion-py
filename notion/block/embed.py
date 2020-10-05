@@ -23,9 +23,9 @@ class EmbedBlock(MediaBlock):
     full_width = field_map("format.block_full_width")
     page_width = field_map("format.block_page_width")
 
-    def set_source_url(self, url):
+    def set_source_url(self, url: str):
         self.source = remove_signed_prefix_as_needed(url)
-        self.display_source = get_embed_link(self.source)
+        self.display_source = get_embed_link(self.source, self._client)
 
 
 class BookmarkBlock(EmbedBlock):
@@ -34,6 +34,7 @@ class BookmarkBlock(EmbedBlock):
     """
 
     _type = "bookmark"
+    _str_fields = "source", "title"
 
     bookmark_cover = field_map("format.bookmark_cover")
     bookmark_icon = field_map("format.bookmark_icon")
