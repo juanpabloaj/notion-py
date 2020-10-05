@@ -131,26 +131,7 @@ def extract_id(url_or_id: str) -> str:
         raise InvalidNotionIdentifier(original_url_or_id)
 
 
-def get_embed_data(source_url: str) -> dict:
-    """
-    Get embed data.
-
-
-    Arguments
-    ---------
-    source_url : str
-        Source URL from which the embedded data will be extracted.
-
-
-    Returns
-    -------
-    dict
-        Extracted data.
-    """
-    return requests.get(f"{EMBED_API_URL}&url={source_url}").json()
-
-
-def get_embed_link(source_url: str) -> str:
+def get_embed_link(source_url: str, client) -> str:
     """
     Get embed link.
 
@@ -160,14 +141,16 @@ def get_embed_link(source_url: str) -> str:
     source_url : str
         Source URL from which the embedded link will be extracted.
 
+    client : NotionClient
+        Client used for sending the actual request.
+
 
     Returns
     -------
     str
         Extracted link.
     """
-
-    data = get_embed_data(source_url)
+    data = client.get(f"{EMBED_API_URL}&url={source_url}").json()
 
     if "html" not in data:
         return source_url

@@ -363,7 +363,7 @@ class BaseHTMLRenderer:
         return self.render_embed(block)
 
     def render_tweet(self, block):
-        return requests.get(TWITTER_API_URL + block.source).json()["html"]
+        return block._client.get(TWITTER_API_URL + block.source).json()["html"]
 
     def render_gist(self, block):
         return self.render_embed(block)

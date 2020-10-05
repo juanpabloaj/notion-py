@@ -38,13 +38,16 @@ class UploadBlock(EmbedBlock):
         file_size = human_size(path)
 
         data = {"bucket": "secure", "name": file_name, "contentType": content_type}
-        resp = self._client.post("getUploadFileUrl", data).json()
+        resp = self._client.post("getUploadFileUrl", data)
+        resp.raise_for_status()
+        resp_data = resp.json()
+        url = resp_data["url"]
+        signed_url = resp_data["signedPutUrl"]
 
         with open(path, mode="rb") as f:
-            response = requests.put(
-                resp["signedPutUrl"], data=f, headers={"Content-Type": content_type}
-            )
-            response.raise_for_status()
+            headers = {"Content-Type": content_type}
+            resp = self._client.put(signed_url, data=f, headers=headers)
+            resp.raise_for_status()
 
         query = urlencode(
             {
@@ -55,7 +58,6 @@ class UploadBlock(EmbedBlock):
                 "userId": self._client.current_user.id,
             }
         )
-        url = resp["url"]
         query_url = f"{url}?{query}"
 
         # special case for FileBlock
