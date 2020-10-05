@@ -311,7 +311,7 @@ class CollectionRowBlock(PageBlock):
         return pages
 
     def _convert_notion_to_python(self, val, prop):
-        _, value = NotionToPythonConverter.convert(value=val, prop=prop, block=self)
+        _, value = NotionToPythonConverter.convert(name="<unknown>", value=val, prop=prop, block=self)
         return value
 
     def _convert_python_to_notion(self, val, prop, name="<unknown>"):
