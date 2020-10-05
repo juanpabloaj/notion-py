@@ -23,4 +23,4 @@ NOTION_LOG_FILE = str(Path(NOTION_DATA_DIR) / "notion.log")
 NOTION_CACHE_DIR = str(Path(NOTION_DATA_DIR) / "cache")
 os.makedirs(NOTION_CACHE_DIR, exist_ok=True)
 
-NOTION_LOG_LEVEL = os.environ.get("NOTION_LOG_LEVEL").upper() or "WARNING"
+NOTION_LOG_LEVEL = os.environ.get("NOTION_LOG_LEVEL", "WARNING").upper()
