@@ -7,10 +7,16 @@ from notion.block.basic import Block
 from notion.client import NotionClient
 
 
+class AttrDict(dict):
+    __getattr__ = dict.__getitem__
+    __setattr__ = dict.__setitem__
+
+
 @dataclass
 class NotionTestContext:
     client: NotionClient
     root_page: Block
+    store: AttrDict
 
 
 @pytest.fixture
@@ -23,6 +29,7 @@ def notion(_cache=[]):
 
     client = NotionClient(token_v2=token_v2)
     page = client.get_block(page_url)
+    store = AttrDict()
 
     if page is None:
         raise ValueError(f"No such page under url: {page_url}")
@@ -33,8 +40,9 @@ def notion(_cache=[]):
 
     page.refresh()
 
-    _cache.append(NotionTestContext(client, page))
-    return _cache[0]
+    notion = NotionTestContext(client, page, store)
+    _cache.append(notion)
+    return notion
 
 
 def assert_block_is_okay(notion, block, type: str, parent=None):
