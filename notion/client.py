@@ -246,6 +246,13 @@ class NotionClient:
         if delete:
             os.remove(file_name)
 
+    @staticmethod
+    def _maybe_prefix_url(endpoint: str) -> str:
+        if endpoint.startswith("http"):
+            return endpoint
+
+        return urljoin(API_BASE_URL, endpoint)
+
     def _update_user_info(self) -> dict:
         """
         Reload information about a Notion User.
@@ -610,9 +617,52 @@ class NotionClient:
         self._download_url(url, tmp_zip)
         self._unzip_file(tmp_zip)
 
-    def post(self, endpoint: str, data: dict = None) -> Response:
+    def get(self, endpoint: str) -> Response:
         """
-        Send HTTP POST request to given endpoint.
+        Send HTTP GET request to given endpoint or URL.
+
+        Arguments
+        ---------
+        endpoint : str
+            Notion's endpoint to aim at.
+
+        Returns
+        -------
+        Response
+            Whatever API sent back.
+        """
+        url = self._maybe_prefix_url(endpoint)
+        return self.session.get(url=url)
+
+    def put(self, endpoint: str, data: dict = None, **kwargs) -> Response:
+        """
+        Send HTTP PUT request to given endpoint or URL.
+
+        Arguments
+        ---------
+        endpoint : str
+            Notion's endpoint to aim at.
+
+        data : dict
+            Data to send.
+            Defaults to None.
+
+        kwargs : dict
+            Additional params for put().
+            Defaults to empty dict.
+
+
+        Returns
+        -------
+        Response
+            Whatever API sent back.
+        """
+        url = self._maybe_prefix_url(endpoint)
+        return self.session.put(url=url, data=data, **kwargs)
+
+    def post(self, endpoint: str, data: dict = None, **kwargs) -> Response:
+        """
+        Send HTTP POST request to given endpoint or URL.
 
         All API requests on Notion.so are done as POSTs,
         except the websocket communications.
@@ -625,6 +675,10 @@ class NotionClient:
 
         data : dict
             Data to send.
+            Defaults to empty dict.
+
+        kwargs : dict
+            Additional params to post().
             Defaults to empty dict.
 
 
@@ -645,14 +699,13 @@ class NotionClient:
         Response
             Whatever API sent back.
         """
-        data = data or {}
-        url = urljoin(API_BASE_URL, endpoint)
-        response = self.session.post(url, json=data)
-        code = response.status_code
-        res_data = response.json()
+        url = self._maybe_prefix_url(endpoint)
+        resp = self.session.post(url, json=data or {}, **kwargs)
+        code = resp.status_code
+        res_data = resp.json()
 
         if code < 400:
-            return response
+            return resp
 
         msg = res_data.get("message") or "<message was not provided>"
 
