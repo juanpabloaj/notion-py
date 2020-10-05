@@ -1,7 +1,8 @@
 import json
 from threading import Thread
 import uuid
-from collections import defaultdict, Callable
+from collections import defaultdict
+from typing import Callable
 from copy import deepcopy
 from inspect import signature
 from pathlib import Path
