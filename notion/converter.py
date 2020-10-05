@@ -1,6 +1,6 @@
 from datetime import datetime, date
 from random import choice
-from typing import Any
+from typing import Any, Callable
 from uuid import uuid1
 
 from notion.block.collection.common import NotionDate
@@ -51,7 +51,7 @@ class BaseConverter:
             raise TypeError(msg)
 
     @classmethod
-    def _get_converter_for_type(cls, type_):
+    def _get_converter_for_type(cls, type_: str) -> Callable:
         if not cls._converters:
             cls._converters = [m for m in dir(cls) if m.startswith("convert_")]
 
@@ -92,17 +92,17 @@ class BaseConverter:
 
         if not callback:
             raise ValueError(
-                f"Prop '{name}' with type '{prop_type}' "
-                "does not have a converter method"
+                f"Prop '{name}' with type '{prop_type}'"
+                " does not have a converter method"
             )
 
-        value = callback(cls, name=name, value=value, prop=prop, block=block)
+        value = callback(name=name, value=value, prop=prop, block=block)
         return f"properties.{prop_id}", value
 
 
 class PythonToNotionConverter(BaseConverter):
     @classmethod
-    def convert_title(cls, name, value, **_kwargs):
+    def convert_title(cls, name, value, **_):
         cls._ensure_type(name, value, str)
         return markdown_to_notion(value)
 
@@ -111,7 +111,7 @@ class PythonToNotionConverter(BaseConverter):
         return cls.convert_title(**kwargs)
 
     @classmethod
-    def convert_number(cls, name, value, **_kwargs):
+    def convert_number(cls, name, value, **_):
         if value is None:
             return None
 
@@ -119,8 +119,11 @@ class PythonToNotionConverter(BaseConverter):
         return [[str(value)]]
 
     @classmethod
-    def convert_select(cls, value, prop, block, **_kwargs):
+    def convert_select(cls, value, prop, block, **_):
         value = to_list(value)
+        if value == [None]:
+            return value
+
         options = prop["options"] = prop.get("options", [])
         valid_options = [[p["value"].lower() for p in options]]
         colors = [
@@ -162,7 +165,7 @@ class PythonToNotionConverter(BaseConverter):
         return cls.convert_select(**kwargs)
 
     @classmethod
-    def convert_email(cls, value, **_kwargs):
+    def convert_email(cls, value, **_):
         return [[value, [["a", value]]]]
 
     @classmethod
@@ -174,7 +177,7 @@ class PythonToNotionConverter(BaseConverter):
         return cls.convert_email(**kwargs)
 
     @classmethod
-    def convert_date(cls, name, value, **_kwargs):
+    def convert_date(cls, name, value, **_):
         cls._ensure_type(name, value, [date, datetime, NotionDate])
 
         if isinstance(value, NotionDate):
@@ -183,12 +186,12 @@ class PythonToNotionConverter(BaseConverter):
         return NotionDate(value)
 
     @classmethod
-    def convert_checkbox(cls, name, value, **_kwargs):
+    def convert_checkbox(cls, name, value, **_):
         cls._ensure_type(name, value, bool)
         return [["Yes" if value else "No"]]
 
     @classmethod
-    def convert_person(cls, value, **_kwargs):
+    def convert_person(cls, value, **_):
         users = []
 
         for user in to_list(value):
@@ -197,7 +200,7 @@ class PythonToNotionConverter(BaseConverter):
         return users[:-1]
 
     @classmethod
-    def convert_file(cls, value, **_kwargs):
+    def convert_file(cls, value, **_):
         files = []
 
         for url in to_list(value):
@@ -208,7 +211,7 @@ class PythonToNotionConverter(BaseConverter):
         return files[:-1]
 
     @classmethod
-    def convert_relation(cls, value, block, **_kwargs):
+    def convert_relation(cls, value, block, **_):
         pages = []
 
         for page in to_list(value):
@@ -219,7 +222,7 @@ class PythonToNotionConverter(BaseConverter):
         return pages[:-1]
 
     @classmethod
-    def convert_created_time(cls, value, **_kwargs):
+    def convert_created_time(cls, value, **_):
         return int(value.timestamp() * 1000)
 
     @classmethod
@@ -227,7 +230,7 @@ class PythonToNotionConverter(BaseConverter):
         return cls.convert_created_time(**kwargs)
 
     @classmethod
-    def convert_created_by(cls, value, **_kwargs):
+    def convert_created_by(cls, value, **_):
         return get_id(value)
 
     @classmethod
@@ -237,7 +240,7 @@ class PythonToNotionConverter(BaseConverter):
 
 class NotionToPythonConverter(BaseConverter):
     @classmethod
-    def convert_title(cls, value, block, **_kwargs):
+    def convert_title(cls, value, block, **_):
         for i, part in enumerate(value):
             if len(part) == 2:
                 for fmt in part[1]:
@@ -254,22 +257,22 @@ class NotionToPythonConverter(BaseConverter):
         return cls.convert_title(**kwargs)
 
     @classmethod
-    def convert_number(cls, value, **_kwargs):
+    def convert_number(cls, value, **_):
         if value is None:
             return None
 
-        value = value[0][0]
+        value = value[0][0].replace(",", "")
         if "." in value:
             return float(value)
 
         return int(value)
 
     @classmethod
-    def convert_select(cls, value, **_kwargs):
+    def convert_select(cls, value, **_):
         return value[0][0] if value else None
 
     @classmethod
-    def convert_multi_select(cls, value, **_kwargs):
+    def convert_multi_select(cls, value, **_):
         return [v.strip() for v in value[0][0].split(",")] if value else []
 
     @classmethod
@@ -285,15 +288,15 @@ class NotionToPythonConverter(BaseConverter):
         return cls.convert_select(**kwargs)
 
     @classmethod
-    def convert_date(cls, value, **_kwargs):
+    def convert_date(cls, value, **_):
         return NotionDate.from_notion(value)
 
     @classmethod
-    def convert_checkbox(cls, value, **_kwargs):
+    def convert_checkbox(cls, value, **_):
         return value[0][0] == "Yes" if value else False
 
     @classmethod
-    def convert_person(cls, value, block, **_kwargs):
+    def convert_person(cls, value, block, **_):
         if not value:
             return []
 
@@ -301,7 +304,7 @@ class NotionToPythonConverter(BaseConverter):
         return [block._client.get_user(i) for i in items]
 
     @classmethod
-    def convert_file(cls, value, block, **_kwargs):
+    def convert_file(cls, value, block, **_):
         if not value:
             return []
 
@@ -310,7 +313,7 @@ class NotionToPythonConverter(BaseConverter):
         return [add_signed_prefix_as_needed(i, client=client) for i in items]
 
     @classmethod
-    def convert_relation(cls, value, block, **_kwargs):
+    def convert_relation(cls, value, block, **_):
         if not value:
             return []
 
@@ -318,7 +321,7 @@ class NotionToPythonConverter(BaseConverter):
         return [block._client.get_block(i) for i in items]
 
     @classmethod
-    def convert_created_time(cls, prop, block, **_kwargs):
+    def convert_created_time(cls, block, prop, **_):
         value = block.get(prop["type"])
         value = datetime.utcfromtimestamp(value / 1000)
         return int(value.timestamp() * 1000)
@@ -328,7 +331,7 @@ class NotionToPythonConverter(BaseConverter):
         return cls.convert_created_time(**kwargs)
 
     @classmethod
-    def convert_created_by(cls, block, prop, **_kwargs):
+    def convert_created_by(cls, block, prop, **_):
         value = block.get(prop["type"] + "_id")
         return block._client.get_user(value)
 
