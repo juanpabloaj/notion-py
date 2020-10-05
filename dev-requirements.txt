@@ -4,6 +4,7 @@ twine
 
 black
 pytest
+pytest-depends
 
 sphinx
 sphinx-rtd-theme

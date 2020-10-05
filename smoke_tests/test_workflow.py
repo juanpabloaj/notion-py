@@ -2,6 +2,8 @@ import time
 import uuid
 from datetime import datetime
 
+import pytest
+
 from notion.block.basic import (
     TextBlock,
     ToDoBlock,
@@ -18,10 +20,9 @@ from notion.block.collection.media import CollectionViewBlock
 from notion.block.upload import VideoBlock
 
 
-def test_workflow_1(notion):
+def test_workflow_1_markdown(notion):
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    parent_page = notion.root_page
-    page = parent_page.children.add_new(
+    page = notion.root_page.children.add_new(
         PageBlock,
         title=f"Smoke test at {now}",
     )
@@ -35,12 +36,26 @@ def test_workflow_1(notion):
     assert col1kid.title.replace("_", "*") == title
     assert col1kid.title_plaintext == "Some formatting: italic, bold, both!"
 
+    notion.store.page = page
+    notion.store.col_list = col_list
+
+
+@pytest.mark.depends(on=['test_workflow_1_markdown'])
+def test_workflow_2_checkbox(notion):
+    col_list = notion.store.col_list
+
     col2 = col_list.children.add_new(ColumnBlock)
     col2.children.add_new(ToDoBlock, title="I should be unchecked")
     col2.children.add_new(ToDoBlock, title="I should be checked", checked=True)
 
     assert col2.children[0].checked is False
     assert col2.children[1].checked is True
+
+
+@pytest.mark.depends(on=['test_workflow_1_markdown'])
+def test_workflow_3_media(notion):
+    page = notion.store.page
+    col_list = notion.store.col_list
 
     page.children.add_new(HeaderBlock, title="The finest music:")
     video = page.children.add_new(VideoBlock, width=100)
@@ -49,17 +64,21 @@ def test_workflow_1(notion):
     assert video in page.children.filter(VideoBlock)
     assert col_list not in page.children.filter(VideoBlock)
 
-    page.children.add_new(SubHeaderBlock, title="A link back to where I came from:")
 
-    alias = page.children.add_alias(parent_page)
+@pytest.mark.depends(on=['test_workflow_1_markdown'])
+def test_workflow_4_alias(notion):
+    page = notion.store.page
+
+    page.children.add_new(SubHeaderBlock, title="A link back to where I came from:")
+    alias = page.children.add_alias(notion.root_page)
+
     assert alias.is_alias
     assert not page.is_alias
 
+    url = page.parent.get_browseable_url()
     page.children.add_new(
         QuoteBlock,
-        title="Clicking [here]({}) should take you to the same place...".format(
-            page.parent.get_browseable_url()
-        ),
+        title=f"Clicking [here]({url}) should take you to the same place..."
     )
 
     # ensure __repr__ methods are not breaking
@@ -67,6 +86,11 @@ def test_workflow_1(notion):
     repr(page.children)
     for child in page.children:
         repr(child)
+
+
+@pytest.mark.depends(on=['test_workflow_1_markdown'])
+def test_workflow_5_order(notion):
+    page = notion.store.page
 
     page.children.add_new(
         SubHeaderBlock, title="The order of the following should be alphabetical:"
@@ -84,6 +108,11 @@ def test_workflow_1(notion):
     c2.move_to(c)
     c1.move_to(c, "first-child")
 
+
+@pytest.mark.depends(on=['test_workflow_1_markdown'])
+def test_workflow_6_collection_view(notion):
+    page = notion.store.page
+
     page.children.add_new(CalloutBlock, title="I am a callout", icon="🤞")
 
     cvb = page.children.add_new(CollectionViewBlock)
@@ -95,14 +124,25 @@ def test_workflow_1(notion):
     cvb.title = "My data!"
     view = cvb.views.add_new(view_type="table")
 
-    special_code = uuid.uuid4().hex[:8]
+    notion.store.cvb = cvb
+    notion.store.view = view
+
+
+@pytest.mark.depends(on=['test_workflow_6_collection_view'])
+def test_workflow_7_collection_row_1(notion):
+    cvb = notion.store.cvb
 
     # add a row
     row1 = cvb.collection.add_row()
+
     assert row1.person == []
+
+    special_code = uuid.uuid4().hex[:8]
     row1.name = "Just some data"
     row1.title = "Can reference 'title' field too! " + special_code
+
     assert row1.name == row1.title
+
     row1.check_yo_self = True
     row1.estimated_value = None
     row1.estimated_value = 42
@@ -118,12 +158,22 @@ def test_workflow_1(notion):
     row1.category = None
     row1.category = "B"
 
+    notion.store.row1 = row1
+    notion.store.special_code = special_code
+
+
+@pytest.mark.depends(on=['test_workflow_7_collection_row_1'])
+def test_workflow_8_collection_row_2(notion):
+    cvb = notion.store.cvb
+
     # add another row
     row2 = cvb.collection.add_row(
         person=notion.client.current_user, title="Metallic penguins"
     )
+
     assert row2.person == [notion.client.current_user]
     assert row2.name == "Metallic penguins"
+
     row2.check_yo_self = False
     row2.estimated_value = 22
     row2.files = [
@@ -133,11 +183,25 @@ def test_workflow_1(notion):
     row2.where_to = "https://learningequality.org"
     row2.category = "C"
 
-    # Run a filtered/sorted query using the view's default parameters
+    notion.store.row2 = row2
+
+
+@pytest.mark.depends(on=['test_workflow_8_collection_row_2'])
+def test_workflow_9_default_query(notion):
+    row1, row2 = notion.store.row1, notion.store.row2
+    view = notion.store.view
+
     result = view.default_query().execute()
+
     assert row1 == result[0]
     assert row2 == result[1]
     assert len(result) == 2
+
+
+@pytest.mark.depends(on=['test_workflow_8_collection_row_2'])
+def test_workflow_10_direct_query(notion):
+    row1, row2 = notion.store.row1, notion.store.row2
+    cvb, special_code = notion.store.cvb, notion.store.special_code
 
     # query the collection directly
     assert row1 in cvb.collection.get_rows(search=special_code)
@@ -145,20 +209,36 @@ def test_workflow_1(notion):
     assert row1 not in cvb.collection.get_rows(search="penguins")
     assert row2 in cvb.collection.get_rows(search="penguins")
 
+
+@pytest.mark.depends(on=['test_workflow_8_collection_row_2'])
+def test_workflow_11_space_query(notion):
+    row1, row2 = notion.store.row1, notion.store.row2
+    cvb, special_code = notion.store.cvb, notion.store.special_code
+
     # search the entire space
     assert row1 in notion.client.search_blocks(search=special_code)
     assert row1 not in notion.client.search_blocks(search="penguins")
     assert row2 not in notion.client.search_blocks(search=special_code)
     assert row2 in notion.client.search_blocks(search="penguins")
 
-    # Run an "aggregation" query
+
+@pytest.mark.depends(on=['test_workflow_6_collection_view'])
+def test_workflow_12_aggregation_query(notion):
+    view = notion.store.view
+
     aggregations = [
         {"property": "estimated_value", "aggregator": "sum", "id": "total_value"}
     ]
     result = view.build_query(aggregations=aggregations).execute()
+
     assert result.get_aggregate("total_value") == 64
 
-    # Run a "filtered" query
+
+@pytest.mark.depends(on=['test_workflow_8_collection_row_2'])
+def test_workflow_13_filtered_query(notion):
+    row1, row2 = notion.store.row1, notion.store.row2
+    view = notion.store.view
+
     filter_params = {
         "filters": [
             {
@@ -178,34 +258,41 @@ def test_workflow_1(notion):
         "operator": "and",
     }
     result = view.build_query(filter=filter_params).execute()
+
     assert row1 in result
     assert row2 not in result
+
+
+@pytest.mark.depends(on=['test_workflow_8_collection_row_2'])
+def test_workflow_14_sorted_query(notion):
+    row1, row2 = notion.store.row1, notion.store.row2
+    view = notion.store.view
 
     # Run a "sorted" query
     sort_params = [{"direction": "ascending", "property": "estimated_value"}]
     result = view.build_query(sort=sort_params).execute()
+
     assert row1 == result[1]
     assert row2 == result[0]
 
-    id = page.id
-    parent_page = page.parent
+
+@pytest.mark.depends(on=['test_workflow_1_markdown'])
+def test_workflow_15_remove(notion):
+    page = notion.store.page
 
     assert page.get("alive") is True
-    assert page in parent_page.children
-    page.remove()
-    assert page.get("alive") is False
-    assert page not in parent_page.children
+    assert page in page.parent.children
 
-    assert (
-        page.space_info
-    ), f"Page {id} was fully deleted prematurely, as we can't get space info about it anymore"
+    page.remove()
+
+    assert page.get("alive") is False
+    assert page not in page.parent.children
+    assert page.space_info, f"Page {page.id} was fully deleted prematurely"
 
     page.remove(permanently=True)
     time.sleep(1)
 
-    assert (
-        not page.space_info
-    ), f"Page {id} was not really fully deleted, as we can still get space info about it"
+    assert not page.space_info, f"Page {page.id} was not fully deleted"
 
 
 def get_collection_schema():
