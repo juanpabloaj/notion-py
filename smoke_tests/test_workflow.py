@@ -40,7 +40,7 @@ def test_workflow_1_markdown(notion):
     notion.store.col_list = col_list
 
 
-@pytest.mark.depends(on=['test_workflow_1_markdown'])
+@pytest.mark.depends(on=["test_workflow_1_markdown"])
 def test_workflow_2_checkbox(notion):
     col_list = notion.store.col_list
 
@@ -52,7 +52,7 @@ def test_workflow_2_checkbox(notion):
     assert col2.children[1].checked is True
 
 
-@pytest.mark.depends(on=['test_workflow_1_markdown'])
+@pytest.mark.depends(on=["test_workflow_1_markdown"])
 def test_workflow_3_media(notion):
     page = notion.store.page
     col_list = notion.store.col_list
@@ -65,7 +65,7 @@ def test_workflow_3_media(notion):
     assert col_list not in page.children.filter(VideoBlock)
 
 
-@pytest.mark.depends(on=['test_workflow_1_markdown'])
+@pytest.mark.depends(on=["test_workflow_1_markdown"])
 def test_workflow_4_alias(notion):
     page = notion.store.page
 
@@ -77,8 +77,7 @@ def test_workflow_4_alias(notion):
 
     url = page.parent.get_browseable_url()
     page.children.add_new(
-        QuoteBlock,
-        title=f"Clicking [here]({url}) should take you to the same place..."
+        QuoteBlock, title=f"Clicking [here]({url}) should take you to the same place..."
     )
 
     # ensure __repr__ methods are not breaking
@@ -88,7 +87,7 @@ def test_workflow_4_alias(notion):
         repr(child)
 
 
-@pytest.mark.depends(on=['test_workflow_1_markdown'])
+@pytest.mark.depends(on=["test_workflow_1_markdown"])
 def test_workflow_5_order(notion):
     page = notion.store.page
 
@@ -109,7 +108,7 @@ def test_workflow_5_order(notion):
     c1.move_to(c, "first-child")
 
 
-@pytest.mark.depends(on=['test_workflow_1_markdown'])
+@pytest.mark.depends(on=["test_workflow_1_markdown"])
 def test_workflow_6_collection_view(notion):
     page = notion.store.page
 
@@ -128,7 +127,7 @@ def test_workflow_6_collection_view(notion):
     notion.store.view = view
 
 
-@pytest.mark.depends(on=['test_workflow_6_collection_view'])
+@pytest.mark.depends(on=["test_workflow_6_collection_view"])
 def test_workflow_7_collection_row_1(notion):
     cvb = notion.store.cvb
 
@@ -162,7 +161,7 @@ def test_workflow_7_collection_row_1(notion):
     notion.store.special_code = special_code
 
 
-@pytest.mark.depends(on=['test_workflow_7_collection_row_1'])
+@pytest.mark.depends(on=["test_workflow_7_collection_row_1"])
 def test_workflow_8_collection_row_2(notion):
     cvb = notion.store.cvb
 
@@ -186,7 +185,7 @@ def test_workflow_8_collection_row_2(notion):
     notion.store.row2 = row2
 
 
-@pytest.mark.depends(on=['test_workflow_8_collection_row_2'])
+@pytest.mark.depends(on=["test_workflow_8_collection_row_2"])
 def test_workflow_9_default_query(notion):
     row1, row2 = notion.store.row1, notion.store.row2
     view = notion.store.view
@@ -198,7 +197,7 @@ def test_workflow_9_default_query(notion):
     assert len(result) == 2
 
 
-@pytest.mark.depends(on=['test_workflow_8_collection_row_2'])
+@pytest.mark.depends(on=["test_workflow_8_collection_row_2"])
 def test_workflow_10_direct_query(notion):
     row1, row2 = notion.store.row1, notion.store.row2
     cvb, special_code = notion.store.cvb, notion.store.special_code
@@ -210,7 +209,7 @@ def test_workflow_10_direct_query(notion):
     assert row2 in cvb.collection.get_rows(search="penguins")
 
 
-@pytest.mark.depends(on=['test_workflow_8_collection_row_2'])
+@pytest.mark.depends(on=["test_workflow_8_collection_row_2"])
 def test_workflow_11_space_query(notion):
     row1, row2 = notion.store.row1, notion.store.row2
     cvb, special_code = notion.store.cvb, notion.store.special_code
@@ -222,7 +221,7 @@ def test_workflow_11_space_query(notion):
     assert row2 in notion.client.search_blocks(search="penguins")
 
 
-@pytest.mark.depends(on=['test_workflow_6_collection_view'])
+@pytest.mark.depends(on=["test_workflow_6_collection_view"])
 def test_workflow_12_aggregation_query(notion):
     view = notion.store.view
 
@@ -234,7 +233,7 @@ def test_workflow_12_aggregation_query(notion):
     assert result.get_aggregate("total_value") == 64
 
 
-@pytest.mark.depends(on=['test_workflow_8_collection_row_2'])
+@pytest.mark.depends(on=["test_workflow_8_collection_row_2"])
 def test_workflow_13_filtered_query(notion):
     row1, row2 = notion.store.row1, notion.store.row2
     view = notion.store.view
@@ -263,7 +262,7 @@ def test_workflow_13_filtered_query(notion):
     assert row2 not in result
 
 
-@pytest.mark.depends(on=['test_workflow_8_collection_row_2'])
+@pytest.mark.depends(on=["test_workflow_8_collection_row_2"])
 def test_workflow_14_sorted_query(notion):
     row1, row2 = notion.store.row1, notion.store.row2
     view = notion.store.view
@@ -276,7 +275,7 @@ def test_workflow_14_sorted_query(notion):
     assert row2 == result[0]
 
 
-@pytest.mark.depends(on=['test_workflow_1_markdown'])
+@pytest.mark.depends(on=["test_workflow_1_markdown"])
 def test_workflow_15_remove(notion):
     page = notion.store.page
 
