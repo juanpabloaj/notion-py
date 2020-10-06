@@ -67,4 +67,6 @@ def assert_block_attributes(block, **kwargs):
 
 
 def pytest_collection_modifyitems(config, items):
-    items.sort(key=lambda i: i.name.startswith("test_workflow"))
+    ws = filter(lambda i: i.name.startswith("test_workflow"), items)
+    ws = sorted(ws, key=lambda i: int(i.name.split("_")[2]), reverse=True)
+    items[:] = list(filter(lambda i: i not in ws, items)) + list(ws)
