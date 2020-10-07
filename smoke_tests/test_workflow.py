@@ -184,10 +184,9 @@ def test_workflow_4_default_query(notion):
 
     result = view.default_query().execute()
 
-    # TODO: fix
-    # assert row1 == result[0]
-    # assert row2 == result[1]
-    # assert len(result) == 2
+    assert row1 == result[0]
+    assert row2 == result[1]
+    assert len(result) == 2
 
 
 def test_workflow_4_direct_query(notion):
