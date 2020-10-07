@@ -34,15 +34,18 @@ def notion(_cache=[]):
     if page is None:
         raise ValueError(f"No such page under url: {page_url}")
 
-    # clean the page for new tests
-    for child in page.children:
-        child.remove(permanently=True)
-
-    page.refresh()
+    clean_root_page(page)
 
     notion = NotionTestContext(client, page, store)
     _cache.append(notion)
     return notion
+
+
+def clean_root_page(page):
+    for child in page.children:
+        child.remove(permanently=True)
+
+    page.refresh()
 
 
 def assert_block_is_okay(notion, block, type: str, parent=None):
@@ -67,6 +70,6 @@ def assert_block_attributes(block, **kwargs):
 
 
 def pytest_collection_modifyitems(config, items):
-    ws = filter(lambda i: i.name.startswith("test_workflow"), items)
-    ws = sorted(ws, key=lambda i: int(i.name.split("_")[2]), reverse=True)
-    items[:] = list(filter(lambda i: i not in ws, items)) + list(ws)
+    ws = [i for i in items if i.name.startswith("test_workflow")]
+    ws.sort(key=lambda i: i.name.split("_")[2], reverse=True)
+    items[:] = ws + [i for i in items if i not in ws][::-1]
