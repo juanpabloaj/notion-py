@@ -13,11 +13,11 @@ copyright = f"{date.today().year}, {__author__}"
 
 html_baseurl = "notion-py.readthedocs.io"
 html_theme = "sphinx_rtd_theme"
+master_doc = "index"
 
 extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.napoleon",
-    "sphinx.ext.githubpages",
     "sphinx.ext.autodoc",
     "sphinx_rtd_theme",
     "sphinxcontrib.apidoc",
