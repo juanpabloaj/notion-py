@@ -236,7 +236,7 @@ def slugify(text: str) -> str:
     return _dash_slugify(text).replace("-", "_")
 
 
-def get_by_path(path: Union[Iterable, str], obj: Any, default: Any = None) -> Any:
+def get_by_path(path: Union[Iterable, str], obj: Any, default: Any = None) -> dict:
     """
     Get value from object's key by dotted path (i.e. "path.to.some.key").
 
@@ -256,9 +256,10 @@ def get_by_path(path: Union[Iterable, str], obj: Any, default: Any = None) -> An
 
     Returns
     -------
-    Any
+    dict
         Value stored under specified key or default value.
     """
+    # TODO: find a way to ensure that the lib is not using Iterable
     if isinstance(path, str):
         path = path.split(".")
 

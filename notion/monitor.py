@@ -145,9 +145,8 @@ class Monitor:
         logger.debug("Initializing new monitoring session.")
 
         content = self.client.session.get(self.url(EIO=3)).content
-        # TODO: add error handling
-
         self.sid = self._decode_numbered_json_thing(content)[0]["sid"]
+
         logger.debug(f"New monitoring session ID is: {self.sid}")
 
         # resubscribe to any existing subscriptions if we're reconnecting
@@ -165,7 +164,6 @@ class Monitor:
         records : set of Record
             Set of `Record` objects to subscribe to.
         """
-
         if isinstance(records, list):
             records = set(records)
 

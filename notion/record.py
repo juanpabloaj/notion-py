@@ -291,26 +291,29 @@ class Record:
             if cb_or_cb_id_prefix in self._callbacks:
                 self._callbacks.remove(cb_or_cb_id_prefix)
 
-    # TODO: unify path
     def get(
         self,
-        path: Union[List[str], str] = None,
-        default=None,
+        path: str = "",
+        default: Any = None,
         force_refresh: bool = False,
-    ) -> Any:
+    ) -> dict:
         """
         Retrieve cached data for this record.
 
 
         Arguments
         ---------
-        path : list of str or str, optional
+        path : str, optional
             Specifies the field to retrieve the value for.
             If no path is supplied, return the entire cached
             data structure for this record.
-        default
+            Defaults to empty string.
+
+        default : Any, optional
             Default value to return if no value was found
             under provided path.
+            Defaults to None.
+
         force_refresh : bool, optional
             If set to True, force refresh the data cache
             from the server before reading the values.
@@ -319,14 +322,11 @@ class Record:
 
         Returns
         -------
-        Any
+        dict
             Cached data.
         """
-        return get_by_path(
-            path or [],
-            self._get_record_data(force_refresh=force_refresh),
-            default=default,
-        )
+        obj = self._get_record_data(force_refresh=force_refresh)
+        return get_by_path(path=path, obj=obj, default=default)
 
     def set(self, path: str, value):
         """
