@@ -300,7 +300,7 @@ class NotionToPythonConverter(BaseConverter):
         if not value:
             return []
 
-        items = [i[1][0][1] for i in value if i[0] != "‣"]
+        items = [i[1][0][1] for i in value if i[0] == "‣"]
         return [block._client.get_user(i) for i in items]
 
     @classmethod

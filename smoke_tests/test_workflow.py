@@ -163,8 +163,7 @@ def test_workflow_3_collection_row_2(notion):
         person=notion.client.current_user, title="Metallic penguins"
     )
 
-    # TODO: fix
-    # assert row2.person == [notion.client.current_user]
+    assert row2.person == [notion.client.current_user]
     assert row2.name == "Metallic penguins"
 
     row2.check_yo_self = False
