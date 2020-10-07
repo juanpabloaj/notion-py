@@ -28,9 +28,9 @@ class Record:
         if self._client._monitor is not None:
             self._client._monitor.subscribe(self)
 
-    def __str__(self) -> str:
+    def __repr__(self) -> str:
         """
-        Return human friendly string representation of the object.
+        Return string representation of the object.
 
 
         Returns
@@ -51,19 +51,8 @@ class Record:
         if getattr(klass_chain[0], "_type", "") != "block":
             fields.pop("type", None)
 
-        return ", ".join(fields.values())
-
-    def __repr__(self) -> str:
-        """
-        Return computer friendly string representation of the object.
-
-
-        Returns
-        -------
-        str
-            String with details about the object.
-        """
-        return f"<{self.__class__.__name__} ({self})>"
+        joined_fields = ", ".join(fields.values())
+        return f"<{self.__class__.__name__} ({joined_fields})>"
 
     def __hash__(self) -> int:
         """
@@ -82,6 +71,12 @@ class Record:
         Compare the objects by their ID.
 
 
+        Arguments
+        ---------
+        other : Record
+            Other record to compare.
+
+
         Returns
         -------
         bool
@@ -92,6 +87,12 @@ class Record:
     def __ne__(self, other):
         """
         Compare the objects by their ID.
+
+
+        Arguments
+        ---------
+        other : Record
+            Other record to compare.
 
 
         Returns
@@ -290,6 +291,7 @@ class Record:
             if cb_or_cb_id_prefix in self._callbacks:
                 self._callbacks.remove(cb_or_cb_id_prefix)
 
+    # TODO: unify path
     def get(
         self,
         path: Union[List[str], str] = None,
