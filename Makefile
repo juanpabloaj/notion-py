@@ -69,16 +69,16 @@ try-format:  ## try to format code with black
 
 
 test:  ## test code with unit tests
-	python -m pytest -v tests/
+	python -m pytest --cache-clear -v $(tests)
 
 
 try-test:  ## try test code with unit tests
-	python -m pytest -v -x --pdb $(tests)
+	python -m pytest --cache-clear -v -x --pdb $(tests)
 
 
 smoke-test:  ## test code with smoke tests
-	python -m pytest -v smoke_tests/
+	python -m pytest --cache-clear -v $(smoke_tests)
 
 
 try-smoke-test:  ## try to test code with smoke tests
-	python -m pytest -v -x --pdb $(smoke_tests)
+	python -m pytest --cache-clear -v -x --pdb $(smoke_tests)
