@@ -124,10 +124,10 @@ class CollectionQueryResult:
         return iter(self._get_block(bid) for bid in self._block_ids)
 
     def __reversed__(self):
-        # TODO: Unexpected type(s): (Iterator) Possible types: (Reversible) (Sequence)
-        return reversed(iter(self))
+        return reversed([i for i in self])
 
     def __contains__(self, item):
+        # TODO: rewrite it, as well as similar one in client.py
         if isinstance(item, str):
             item_id = extract_id(item)
         elif isinstance(item, Block):

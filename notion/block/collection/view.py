@@ -28,7 +28,6 @@ class CollectionView(Record):
             collection=self.collection, collection_view=self, **kwargs
         )
 
-    # TODO: remove this method?
     def default_query(self) -> CollectionQuery:
         """
         Return default query.

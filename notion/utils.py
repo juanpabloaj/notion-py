@@ -172,7 +172,8 @@ def add_signed_prefix_as_needed(url: str, client=None) -> str:
         URL to operate on.
 
     client : NotionClient, optional
-        # TODO: Client object, used for ???
+        It's used for making wrapped requests via
+        initialized requests.Session object.
         Defaults to None.
 
 

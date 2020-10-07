@@ -297,7 +297,7 @@ class NotionClient:
         Arguments
         ---------
         table : str
-            TODO: ???
+            A "block type" in notion.so terminology.
 
         url_or_id : str
             Path or ID to block.
@@ -595,8 +595,7 @@ class NotionClient:
         }
 
         if export_type in ["pdf", "html"]:
-            opts = data["task"]["request"]["exportOptions"]
-            opts["pdfFormat"] = "Letter"
+            data["task"]["request"]["exportOptions"]["pdfFormat"] = "Letter"
 
         def fetch():
             time.sleep(0.1)
