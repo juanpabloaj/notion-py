@@ -21,15 +21,15 @@ class NotionSpace(Record):
     icon = field_map("icon")
 
     @property
-    def pages(self):
+    def pages(self) -> list:
         # The page list includes pages the current user
         # might not have permissions on, so it's slow to query.
         # Instead, we just filter for pages with the space as the parent.
         return self._client.search_pages_with_parent(self.id)
 
     @property
-    def users(self):
-        ids = [permission["user_id"] for permission in self.get("permissions")]
+    def users(self) -> list:
+        ids = [p["user_id"] for p in self.get("permissions")]
         self._client.refresh_records(notion_user=ids)
         return [self._client.get_user(uid) for uid in ids]
 

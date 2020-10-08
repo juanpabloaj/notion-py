@@ -1,3 +1,5 @@
+from typing import Union
+
 from notion.block.basic import Block
 from notion.block.collection.common import _normalize_query_data, _normalize_prop_name
 from notion.utils import extract_id
@@ -87,34 +89,31 @@ class CollectionQueryResult:
             agg.get("id") for agg in (query.aggregate or query.aggregations)
         ]
 
-    def _get_block_ids(self, result):
+    def _get_block_ids(self, result: dict) -> list:
         return result["blockIds"]
 
-    def _get_block(self, bid):
+    def _get_block(self, block_id: str):
         from notion.block.collection.basic import CollectionRowBlock
 
-        block = CollectionRowBlock(self.collection._client, bid)
+        block = CollectionRowBlock(self.collection._client, block_id)
         # TODO: wtf? pass it as argument?
         block.__dict__["collection"] = self.collection
         return block
 
-    def get_aggregate(self, id):
+    def get_aggregate(self, block_id: str):
         for agg_id, agg in zip(self.aggregate_ids, self.aggregates):
-            if id == agg_id:
+            if block_id == agg_id:
                 return agg["value"]
         return None
 
-    def __repr__(self):
-        if not len(self):
-            return "[]"
-
-        children = ""
+    def __repr__(self) -> str:
+        children = "\n" if len(self) else ""
         for child in self:
             children += f"  {repr(child)},\n"
 
-        return f"[\n{children}]"
+        return f"<{self.__class__.__name__} [\n{children}]>"
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._block_ids)
 
     def __getitem__(self, key):
@@ -124,28 +123,18 @@ class CollectionQueryResult:
         return iter(self._get_block(bid) for bid in self._block_ids)
 
     def __reversed__(self):
-        return reversed([i for i in self])
+        return reversed(list(self))
 
-    def __contains__(self, item):
-        # TODO: rewrite it, as well as similar one in client.py
-        if isinstance(item, str):
-            item_id = extract_id(item)
-        elif isinstance(item, Block):
-            item_id = item.id
-        else:
-            return False
-        return item_id in self._block_ids
+    def __contains__(self, other: Union[Block, str]) -> bool:
+        return extract_id(other) in self._block_ids
 
 
 class CalendarQueryResult(CollectionQueryResult):
 
     _type = "calendar"
 
-    def _get_block_ids(self, result):
-        block_ids = []
-        for week in result["weeks"]:
-            block_ids += week["items"]
-        return block_ids
+    def _get_block_ids(self, result: dict) -> list:
+        return [w["items"] for w in result["weeks"]]
 
 
 class TableQueryResult(CollectionQueryResult):

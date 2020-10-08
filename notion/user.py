@@ -18,7 +18,7 @@ class NotionUser(Record):
     time_zone = field_map("time_zone")
 
     @property
-    def full_name(self):
+    def full_name(self) -> str:
         """
         Get full user name.
 

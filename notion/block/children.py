@@ -1,8 +1,7 @@
 import time
-from typing import Union
+from typing import Union, Optional
 
 from notion.block.basic import Block
-from notion.block.types import get_block_type
 from notion.logger import logger
 from notion.utils import extract_id
 
@@ -45,17 +44,14 @@ class Children:
         return block
 
     def __repr__(self):
-        if not len(self):
-            return "[]"
-
-        children = ""
+        children = "\n" if len(self) else ""
         for child in self:
             children += f"  {repr(child)},\n"
 
-        return f"[\n{children}]"
+        return f"<{self.__class__.__name__} [{children}]>"
 
     def __len__(self):
-        return len(self._content_list() or [])
+        return len(self._content_list())
 
     def __getitem__(self, key):
         result = self._content_list()[key]
@@ -73,15 +69,8 @@ class Children:
     def __reversed__(self):
         return reversed(list(self))
 
-    def __contains__(self, item: Union[str, Block]):
-        if isinstance(item, str):
-            item_id = extract_id(item)
-        elif isinstance(item, Block):
-            item_id = item.id
-        else:
-            return False
-
-        return item_id in self._content_list()
+    def __contains__(self, other: Union[Block, str]):
+        return extract_id(other) in self._content_list()
 
     def add_new(self, block: Block, child_list_key: str = None, **kwargs) -> Block:
         """
@@ -169,9 +158,6 @@ class Templates(Children):
     """
 
     _child_list_key = "template_pages"
-
-    def _content_list(self):
-        return self._parent.get(self._child_list_key) or []
 
     def add_new(self, **kwargs):
         kwargs["block_type"] = "page"

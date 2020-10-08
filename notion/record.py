@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import List, Callable, Union, Iterable, Any
+from typing import Callable, Union, Iterable, Any
 
 from notion.settings import BASE_URL
 from notion.store import Callback

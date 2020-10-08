@@ -284,8 +284,7 @@ class NotionClient:
             Top level pages.
         """
         blocks = self._update_user_info()["block"].keys()
-        blocks = [self.get_block(bid) for bid in blocks]
-        return blocks
+        return [self.get_block(bid) for bid in blocks]
 
     def get_record_data(
         self, table: str, url_or_id: str, force_refresh: bool = False

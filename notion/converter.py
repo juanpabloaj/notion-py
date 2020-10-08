@@ -8,27 +8,8 @@ from notion.markdown import markdown_to_notion, notion_to_markdown
 from notion.utils import (
     remove_signed_prefix_as_needed,
     add_signed_prefix_as_needed,
-    to_list,
+    to_list, extract_id,
 )
-
-
-def get_id(value) -> str:
-    """
-    Get ID from value if it's an object, else return it.
-
-
-    Arguments
-    ---------
-    value : Any
-        String or Record.
-
-
-    Returns
-    -------
-    str
-        ID.
-    """
-    return value if isinstance(value, str) else value.id
 
 
 class BaseConverter:
@@ -101,6 +82,7 @@ class BaseConverter:
 
 
 class PythonToNotionConverter(BaseConverter):
+
     @classmethod
     def convert_title(cls, name, value, **_):
         cls._ensure_type(name, value, str)
@@ -195,7 +177,7 @@ class PythonToNotionConverter(BaseConverter):
         users = []
 
         for user in to_list(value):
-            users += [["‣", [["u", get_id(user)]]], [","]]
+            users += [["‣", [["u", extract_id(user)]]], [","]]
 
         return users[:-1]
 
@@ -231,7 +213,7 @@ class PythonToNotionConverter(BaseConverter):
 
     @classmethod
     def convert_created_by(cls, value, **_):
-        return get_id(value)
+        return extract_id(value)
 
     @classmethod
     def convert_last_edited_by(cls, **kwargs):
@@ -239,6 +221,7 @@ class PythonToNotionConverter(BaseConverter):
 
 
 class NotionToPythonConverter(BaseConverter):
+
     @classmethod
     def convert_title(cls, value, block, **_):
         for i, part in enumerate(value):
