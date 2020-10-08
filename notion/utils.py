@@ -1,10 +1,9 @@
 import os
 import uuid
 from datetime import datetime
-from typing import Union, Iterable, Any
+from typing import Union, Iterable, Any, Optional
 from urllib.parse import urlparse, parse_qs, quote_plus, unquote_plus
 
-import requests
 from bs4 import BeautifulSoup
 from slugify import slugify as _dash_slugify
 
@@ -14,14 +13,6 @@ from notion.settings import (
     S3_URL_PREFIX,
     EMBED_API_URL,
 )
-
-
-class InvalidNotionIdentifier(Exception):
-    """
-    Invalid Notion Identifier was found.
-    """
-
-    pass
 
 
 def to_list(value) -> list:
@@ -87,38 +78,34 @@ def human_size(path: str, divider: int = 1024) -> str:
     return str(size)
 
 
-def extract_id(url_or_id: str) -> str:
+def extract_id(source) -> Optional[str]:
     """
-    Extract the block/page ID from a Notion.so URL.
+    Extract the record ID from a block or Notion.so URL.
 
     If it's a bare page URL, it will be the ID of the page.
     If there's a hash with a block ID in it (from clicking "Copy Link")
     on a block in a page), it will instead be the ID of that block.
     If it's already in ID format, it will be passed right through.
+    If it's a Block, it will be the ID of a block.
 
 
     Arguments
     ---------
-    url_or_id : str
-        Link to block or its ID.
-
-
-    Raises
-    ------
-    InvalidNotionIdentifier
-        Raised when `url_or_id` can't be converted to UUID.
+    source
+        Block or Link to block or its ID.
 
 
     Returns
     -------
     str
-        ID of the block.
+        ID of the block or None.
     """
-    original_url_or_id = url_or_id
+    if not isinstance(source, str):
+        return source.id
 
-    if url_or_id.startswith(BASE_URL):
-        url_or_id = (
-            url_or_id.split("#")[-1]
+    if source.startswith(BASE_URL):
+        source = (
+            source.split("#")[-1]
             .split("/")[-1]
             .split("&p=")[-1]
             .split("?")[0]
@@ -126,9 +113,9 @@ def extract_id(url_or_id: str) -> str:
         )
 
     try:
-        return str(uuid.UUID(url_or_id))
+        return str(uuid.UUID(source))
     except ValueError:
-        raise InvalidNotionIdentifier(original_url_or_id)
+        return None
 
 
 def get_embed_link(source_url: str, client) -> str:
