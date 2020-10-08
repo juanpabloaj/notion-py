@@ -91,7 +91,7 @@ def extract_id(source) -> Optional[str]:
 
     Arguments
     ---------
-    source
+    source : Block or str
         Block or Link to block or its ID.
 
 
@@ -223,15 +223,15 @@ def slugify(text: str) -> str:
     return _dash_slugify(text).replace("-", "_")
 
 
-def get_by_path(path: Union[Iterable, str], obj: Any, default: Any = None) -> dict:
+def get_by_path(path: str, obj: Any, default: Any = None) -> dict:
     """
     Get value from object's key by dotted path (i.e. "path.to.some.key").
 
 
     Arguments
     ---------
-    path : list or str
-        Path in string form or as list elements.
+    path : str
+        Path in string form.
 
     obj : Any
         Object to traverse.
@@ -246,20 +246,16 @@ def get_by_path(path: Union[Iterable, str], obj: Any, default: Any = None) -> di
     dict
         Value stored under specified key or default value.
     """
-    # TODO: find a way to ensure that the lib is not using Iterable
-    if isinstance(path, str):
-        path = path.split(".")
-
-    value = obj
+    path = path.split(".")
 
     # try to traverse down the sequence of keys defined
     # in the path, to get the target value if it exists
     try:
         for key in path:
-            if isinstance(value, list):
+            if isinstance(obj, list):
                 key = int(key)
-            value = value[key]
+            obj = obj[key]
     except (KeyError, TypeError, IndexError):
-        value = default
+        obj = default
 
-    return value
+    return obj

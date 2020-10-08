@@ -8,7 +8,8 @@ from notion.markdown import markdown_to_notion, notion_to_markdown
 from notion.utils import (
     remove_signed_prefix_as_needed,
     add_signed_prefix_as_needed,
-    to_list, extract_id,
+    to_list,
+    extract_id,
 )
 
 
@@ -82,7 +83,6 @@ class BaseConverter:
 
 
 class PythonToNotionConverter(BaseConverter):
-
     @classmethod
     def convert_title(cls, name, value, **_):
         cls._ensure_type(name, value, str)
@@ -221,7 +221,6 @@ class PythonToNotionConverter(BaseConverter):
 
 
 class NotionToPythonConverter(BaseConverter):
-
     @classmethod
     def convert_title(cls, value, block, **_):
         for i, part in enumerate(value):
