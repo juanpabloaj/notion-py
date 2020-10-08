@@ -224,16 +224,16 @@ class NotionToPythonConverter(BaseConverter):
 
     @classmethod
     def convert_title(cls, value, block, **_):
-        for i, part in enumerate(value):
-            if len(part) == 2:
-                for fmt in part[1]:
-                    if "p" in fmt:
-                        page = block._client.get_block(fmt[1])
-                        title = f"{page.icon} {page.title}"
-                        address = page.get_browseable_url()
-                        value[i] = f"[{title}]({address})"
+        block_ids = [v[1] for v in value if len(v) == 2 and "p" in v[1]]
+        links = []
 
-        return notion_to_markdown(value) if value else ""
+        for block_id in block_ids:
+            page = block._client.get_block(block_id)
+            title = f"{page.icon} {page.title}"
+            address = page.get_browseable_url()
+            links += f"[{title}]({address})"
+
+        return notion_to_markdown(links) if links else ""
 
     @classmethod
     def convert_text(cls, **kwargs):
@@ -256,7 +256,10 @@ class NotionToPythonConverter(BaseConverter):
 
     @classmethod
     def convert_multi_select(cls, value, **_):
-        return [v.strip() for v in value[0][0].split(",")] if value else []
+        if not value:
+            return []
+
+        return [v.strip() for v in value[0][0].split(",")]
 
     @classmethod
     def convert_email(cls, **kwargs):
