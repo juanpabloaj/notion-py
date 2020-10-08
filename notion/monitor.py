@@ -239,11 +239,12 @@ class Monitor:
             When GET request fails for `retries` times.
         """
         logger.debug("Starting new long-poll request")
+        url = self.url(EIO=3, sid=self.sid)
+        response = None
 
         while retries:
             try:
                 retries -= 1
-                url = self.url(EIO=3, sid=self.sid)
                 response = self.client.session.get(url)
                 response.raise_for_status()
 
