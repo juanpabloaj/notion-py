@@ -1,7 +1,7 @@
 import os
 import uuid
 from datetime import datetime
-from typing import Union, Iterable, Any, Optional
+from typing import Any, Optional
 from urllib.parse import urlparse, parse_qs, quote_plus, unquote_plus
 
 from bs4 import BeautifulSoup
@@ -142,9 +142,7 @@ def get_embed_link(source_url: str, client) -> str:
     if "html" not in data:
         return source_url
 
-    # TODO: replace BS4 with built in solution
-    url = list(BeautifulSoup(data["html"], "html.parser").children)[0]["src"]
-
+    url = data["html"].split('src="')[1].split('"')[0]
     return parse_qs(urlparse(url).query)["src"][0]
 
 
