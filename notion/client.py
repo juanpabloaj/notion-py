@@ -32,7 +32,7 @@ from notion.utils import extract_id, now, to_list
 
 
 class NotionApiError(Exception):
-    def __init__(self, message, **extra):
+    def __init__(self, message: str, **extra):
         dumped_data = json.dumps(extra, indent=2)
         logger.error(f"Exception: {dumped_data}")
         super().__init__(message)
@@ -218,11 +218,9 @@ class NotionClient:
 
         https://requests.readthedocs.io/en/master/user/quickstart/#raw-response-content
         """
-        chunk_size = None if chunk_size == 0 else chunk_size
-
         r = get(url, stream=True)
         with open(save_path, "wb") as fd:
-            for chunk in r.iter_content(chunk_size=chunk_size):
+            for chunk in r.iter_content(chunk_size=chunk_size or None):
                 fd.write(chunk)
 
     @staticmethod
@@ -431,11 +429,6 @@ class NotionClient:
                 )
 
             collection_id, view_id = match.groups()
-            #            collection = self.get_block(
-            #                collection_id, force_refresh=force_refresh
-            #            ).collection
-            # TODO: this should've been used in the first place but I've not
-            #       tested it
             collection = self.get_collection(collection_id, force_refresh)
         else:
             view_id = url_or_id
@@ -847,7 +840,7 @@ class NotionClient:
 
         return [self.get_block(bid) for bid in data["results"]]
 
-    def create_record(self, table: str, parent: Block, **kwargs):
+    def create_record(self, table: str, parent: Block, **kwargs) -> str:
         """
         Create new record.
 

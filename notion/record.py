@@ -328,7 +328,7 @@ class Record:
         obj = self._get_record_data(force_refresh=force_refresh)
         return get_by_path(path=path, obj=obj, default=default)
 
-    def set(self, path: str, value):
+    def set(self, path: str, value: Any):
         """
         Set a specific `value` under the specific `path`
         on the record's data structure on the server.
