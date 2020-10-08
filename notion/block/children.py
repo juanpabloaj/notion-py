@@ -107,9 +107,10 @@ class Children:
             Instance of added block.
         """
         # determine the block type string from the Block class, if provided
-        is_a_valid_block = isinstance(block, type) and issubclass(block, Block)
-        is_a_valid_block = is_a_valid_block and hasattr(block, "_type")
-        if not is_a_valid_block:
+        valid = isinstance(block, type)
+        valid = valid and issubclass(block, Block)
+        valid = valid and hasattr(block, "_type")
+        if not valid:
             raise ValueError(
                 "block argument must be a Block subclass with a _type attribute"
             )
