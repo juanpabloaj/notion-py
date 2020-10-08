@@ -4,7 +4,6 @@ from datetime import datetime
 from typing import Any, Optional
 from urllib.parse import urlparse, parse_qs, quote_plus, unquote_plus
 
-from bs4 import BeautifulSoup
 from slugify import slugify as _dash_slugify
 
 from notion.settings import (
