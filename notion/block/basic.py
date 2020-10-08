@@ -44,37 +44,6 @@ class Block(Record):
     type = field_map("type")
     alive = field_map("alive")
 
-    @property
-    def children(self):
-        if not self._children:
-            children_ids = self.get("content", [])
-            self._client.refresh_records(block=children_ids)
-            # TODO: can we do something about that without breaking
-            #       the current code layout?
-            from notion.block.children import Children
-
-            self._children = Children(parent=self)
-        return self._children
-
-    @property
-    def is_alias(self):
-        return self._alias_parent is not None
-
-    @property
-    def parent(self):
-        parent_id = self._alias_parent
-        parent_table = "block"
-
-        if not self.is_alias:
-            parent_id = self.get("parent_id")
-            parent_table = self.get("parent_table")
-
-        getter = getattr(self._client, f"get_{parent_table}")
-        if getter:
-            return getter(parent_id)
-
-        return None
-
     def _convert_diff_to_changelist(self, difference, old_val, new_val):
         # TODO: cached property?
         mappers = {}
@@ -293,6 +262,46 @@ class Block(Record):
         # update the local block cache to reflect the updates
         self._client.refresh_records(block=[self.id])
 
+    @property
+    def children(self):
+        """
+        Get block children.
+
+
+        Returns
+        -------
+        Children
+            Children of this block.
+        """
+        if not self._children:
+            children_ids = self.get("content", [])
+            self._client.refresh_records(block=children_ids)
+            # TODO: can we do something about that without breaking
+            #       the current code layout?
+            from notion.block.children import Children
+
+            self._children = Children(parent=self)
+        return self._children
+
+    @property
+    def is_alias(self):
+        return self._alias_parent is not None
+
+    @property
+    def parent(self):
+        parent_id = self._alias_parent
+        parent_table = "block"
+
+        if not self.is_alias:
+            parent_id = self.get("parent_id")
+            parent_table = self.get("parent_table")
+
+        getter = getattr(self._client, f"get_{parent_table}")
+        if getter:
+            return getter(parent_id)
+
+        return None
+
 
 class BasicBlock(Block):
 
@@ -419,7 +428,8 @@ class FactoryBlock(BasicBlock):
     """
     Also known as a "Template Button"
 
-    The title is the button text, and the children are the templates to clone.
+    The title is the button text,
+    and the children are the templates to clone.
     """
 
     _type = "factory"

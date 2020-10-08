@@ -29,14 +29,28 @@ class CollectionBlock(Block):
         super().__init__(*args, **kwargs)
         self._templates = None
 
-    @property
-    def templates(self) -> Templates:
-        if not self._templates:
-            template_pages = self.get("template_pages", [])
-            self._client.refresh_records(block=template_pages)
-            self._templates = Templates(parent=self)
+    def _convert_diff_to_changelist(self, difference, old_val, new_val):
+        changes = []
+        remaining = []
 
-        return self._templates
+        for operation, path, values in difference:
+            if path == "rows":
+                changes.append((operation, path, values))
+            else:
+                remaining.append((operation, path, values))
+
+        return changes + super()._convert_diff_to_changelist(
+            remaining, old_val, new_val
+        )
+
+    def _get_a_collection_view(self):
+        """
+        Get an arbitrary collection view for this collection, to allow querying.
+        """
+        parent = self.parent
+        assert isinstance(parent, CollectionViewBlock)
+        assert len(parent.views) > 0
+        return parent.views[0]
 
     def get_schema_properties(self) -> list:
         """
@@ -49,6 +63,7 @@ class CollectionBlock(Block):
             All properties.
         """
         properties = []
+
         for block_id, item in self.get("schema").items():
             slug = slugify(item["name"])
             properties.append({"id": block_id, "slug": slug, **item})
@@ -122,29 +137,6 @@ class CollectionBlock(Block):
 
         return row
 
-    @property
-    def parent(self):
-        """
-        Get parent block.
-
-
-        Returns
-        -------
-        Block
-            Parent block.
-        """
-        assert self.get("parent_table") == "block"
-        return self._client.get_block(self.get("parent_id"))
-
-    def _get_a_collection_view(self):
-        """
-        Get an arbitrary collection view for this collection, to allow querying.
-        """
-        parent = self.parent
-        assert isinstance(parent, CollectionViewBlock)
-        assert len(parent.views) > 0
-        return parent.views[0]
-
     def query(self, **kwargs):
         """
         Run a query inline and return the results.
@@ -169,38 +161,34 @@ class CollectionBlock(Block):
         """
         return self.query(**kwargs)
 
-    def _convert_diff_to_changelist(self, difference, old_val, new_val):
-        changes = []
-        remaining = []
+    @property
+    def templates(self) -> Templates:
+        if not self._templates:
+            template_pages = self.get("template_pages", [])
+            self._client.refresh_records(block=template_pages)
+            self._templates = Templates(parent=self)
 
-        for operation, path, values in difference:
-            if path == "rows":
-                changes.append((operation, path, values))
-            else:
-                remaining.append((operation, path, values))
+        return self._templates
 
-        return changes + super()._convert_diff_to_changelist(
-            remaining, old_val, new_val
-        )
+    @property
+    def parent(self):
+        """
+        Get parent block.
+
+
+        Returns
+        -------
+        Block
+            Parent block.
+        """
+        assert self.get("parent_table") == "block"
+        return self._client.get_block(self.get("parent_id"))
 
 
 class CollectionRowBlock(PageBlock):
     """
     Collection Row Block.
     """
-
-    @property
-    def is_template(self):
-        return self.get("is_template")
-
-    @property
-    def collection(self):
-        return self._client.get_collection(self.get("parent_id"))
-
-    @property
-    def schema(self):
-        props = self.collection.get_schema_properties()
-        return [p for p in props if p["type"] not in ["formula", "rollup"]]
 
     def __getattr__(self, attname):
         return self.get_property(attname)
@@ -228,14 +216,14 @@ class CollectionRowBlock(PageBlock):
 
         raise AttributeError(f"Unknown property: '{name}'")
 
+    def __dir__(self):
+        return self._get_property_slugs() + dir(super())
+
     def _get_property_slugs(self):
         slugs = [prop["slug"] for prop in self.schema]
         if "title" not in slugs:
             slugs.append("title")
         return slugs
-
-    def __dir__(self):
-        return self._get_property_slugs() + dir(super())
 
     def _get_property(self, name):
         prop = self.collection.get_schema_property(name)
@@ -245,24 +233,6 @@ class CollectionRowBlock(PageBlock):
         prop_id = prop["id"]
         value = self.get(f"properties.{prop_id}")
         return value, prop
-
-    def get_property(self, name):
-        return self._convert_notion_to_python(*self._get_property(name))
-
-    def get_all_properties(self):
-        props = {}
-        for prop in self.schema:
-            prop_id = slugify(prop["name"])
-            props[prop_id] = self.get_property(prop_id)
-
-        return props
-
-    def set_property(self, name, value):
-        _, prop = self._get_property(name)
-        self.set(*self._convert_python_to_notion(value, prop, name))
-
-    def get_mentioned_pages_on_property(self, name):
-        return self._convert_mentioned_pages_to_python(*self._get_property(name))
 
     def _convert_diff_to_changelist(self, difference, old_val, new_val):
         changed_props = set()
@@ -320,6 +290,37 @@ class CollectionRowBlock(PageBlock):
         return PythonToNotionConverter.convert(
             name=name, value=val, prop=prop, block=self
         )
+
+    def get_property(self, name):
+        return self._convert_notion_to_python(*self._get_property(name))
+
+    def get_all_properties(self):
+        props = {}
+        for prop in self.schema:
+            prop_id = slugify(prop["name"])
+            props[prop_id] = self.get_property(prop_id)
+
+        return props
+
+    def set_property(self, name, value):
+        _, prop = self._get_property(name)
+        self.set(*self._convert_python_to_notion(value, prop, name))
+
+    def get_mentioned_pages_on_property(self, name):
+        return self._convert_mentioned_pages_to_python(*self._get_property(name))
+
+    @property
+    def is_template(self):
+        return self.get("is_template")
+
+    @property
+    def collection(self):
+        return self._client.get_collection(self.get("parent_id"))
+
+    @property
+    def schema(self):
+        props = self.collection.get_schema_properties()
+        return [p for p in props if p["type"] not in ["formula", "rollup"]]
 
 
 class TemplateBlock(CollectionRowBlock):

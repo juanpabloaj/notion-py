@@ -89,23 +89,6 @@ class CollectionQueryResult:
             agg.get("id") for agg in (query.aggregate or query.aggregations)
         ]
 
-    def _get_block_ids(self, result: dict) -> list:
-        return result["blockIds"]
-
-    def _get_block(self, block_id: str):
-        from notion.block.collection.basic import CollectionRowBlock
-
-        block = CollectionRowBlock(self.collection._client, block_id)
-        # TODO: wtf? pass it as argument?
-        block.__dict__["collection"] = self.collection
-        return block
-
-    def get_aggregate(self, block_id: str):
-        for agg_id, agg in zip(self.aggregate_ids, self.aggregates):
-            if block_id == agg_id:
-                return agg["value"]
-        return None
-
     def __repr__(self) -> str:
         children = "\n" if len(self) else ""
         for child in self:
@@ -127,6 +110,23 @@ class CollectionQueryResult:
 
     def __contains__(self, other: Union[Block, str]) -> bool:
         return extract_id(other) in self._block_ids
+
+    def _get_block_ids(self, result: dict) -> list:
+        return result["blockIds"]
+
+    def _get_block(self, block_id: str):
+        from notion.block.collection.basic import CollectionRowBlock
+
+        block = CollectionRowBlock(self.collection._client, block_id)
+        # TODO: wtf? pass it as argument?
+        block.__dict__["collection"] = self.collection
+        return block
+
+    def get_aggregate(self, block_id: str):
+        for agg_id, agg in zip(self.aggregate_ids, self.aggregates):
+            if block_id == agg_id:
+                return agg["value"]
+        return None
 
 
 class CalendarQueryResult(CollectionQueryResult):

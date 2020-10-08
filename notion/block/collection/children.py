@@ -46,8 +46,4 @@ class CollectionViewBlockViews(Children):
         views.append(view.id)
         self._parent.set(CollectionViewBlockViews._child_list_key, views)
 
-        # At this point, the view does not seem to be completely initialized yet
-        # Hack: wait a bit before e.g. setting a query.
-        # Note: temporarily disabling this sleep to see if the issue reoccurs.
-        # time.sleep(3)
         return view

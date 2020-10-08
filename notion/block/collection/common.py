@@ -49,20 +49,6 @@ class NotionDate:
         self.reminder = reminder
 
     @classmethod
-    def from_notion(cls, obj):
-        if isinstance(obj, dict):
-            data = obj
-        elif isinstance(obj, list):
-            data = obj[0][1][0][1]
-        else:
-            return None
-        start = cls._parse_datetime(data.get("start_date"), data.get("start_time"))
-        end = cls._parse_datetime(data.get("end_date"), data.get("end_time"))
-        timezone = data.get("timezone")
-        reminder = data.get("reminder")
-        return cls(start, end=end, timezone=timezone, reminder=reminder)
-
-    @classmethod
     def _parse_datetime(cls, date_str, time_str):
         if not date_str:
             return None
@@ -89,6 +75,20 @@ class NotionDate:
         if self.end:
             name += "range"
         return name
+
+    @classmethod
+    def from_notion(cls, obj):
+        if isinstance(obj, dict):
+            data = obj
+        elif isinstance(obj, list):
+            data = obj[0][1][0][1]
+        else:
+            return None
+        start = cls._parse_datetime(data.get("start_date"), data.get("start_time"))
+        end = cls._parse_datetime(data.get("end_date"), data.get("end_time"))
+        timezone = data.get("timezone")
+        reminder = data.get("reminder")
+        return cls(start, end=end, timezone=timezone, reminder=reminder)
 
     def to_notion(self):
 

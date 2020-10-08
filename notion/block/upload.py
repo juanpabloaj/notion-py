@@ -2,8 +2,6 @@ import os
 from mimetypes import guess_type
 from urllib.parse import urlencode, urlparse
 
-import requests
-
 from notion.block.embed import EmbedBlock
 from notion.maps import field_map, property_map
 from notion.utils import human_size
@@ -35,7 +33,6 @@ class UploadBlock(EmbedBlock):
 
         content_type = guess_type(path)[0] or "text/plain"
         file_name = os.path.split(path)[-1]
-        file_size = human_size(path)
 
         data = {"bucket": "secure", "name": file_name, "contentType": content_type}
         resp = self._client.post("getUploadFileUrl", data)
@@ -60,10 +57,6 @@ class UploadBlock(EmbedBlock):
         )
         query_url = f"{url}?{query}"
 
-        # special case for FileBlock
-        if hasattr(self, "size"):
-            setattr(self, "size", file_size)
-
         self.source = query_url
         self.display_source = query_url
         self.file_id = urlparse(url).path.split("/")[2]
@@ -78,6 +71,10 @@ class FileBlock(UploadBlock):
 
     size = property_map("size")
     title = property_map("title")
+
+    def upload_file(self, path: str):
+        super().upload_file(path)
+        self.size = human_size(path)
 
 
 class PdfBlock(UploadBlock):

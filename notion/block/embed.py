@@ -50,7 +50,7 @@ class BookmarkBlock(EmbedBlock):
 
 class AbstractBlock(EmbedBlock):
     """
-    Abstract Block.
+    Abstract Block for abstract.com
     """
 
     _type = "abstract"
@@ -58,7 +58,7 @@ class AbstractBlock(EmbedBlock):
 
 class FramerBlock(EmbedBlock):
     """
-    Framer Block.
+    Framer Block for framer.com
     """
 
     _type = "framer"
@@ -66,7 +66,7 @@ class FramerBlock(EmbedBlock):
 
 class TweetBlock(EmbedBlock):
     """
-    Tweet Block for twitter.com.
+    Tweet Block for twitter.com
     """
 
     _type = "tweet"
@@ -74,7 +74,7 @@ class TweetBlock(EmbedBlock):
 
 class GistBlock(EmbedBlock):
     """
-    Gist Block for gist.github.com.
+    Gist Block for gist.github.com
     """
 
     _type = "gist"
@@ -82,7 +82,7 @@ class GistBlock(EmbedBlock):
 
 class DriveBlock(EmbedBlock):
     """
-    Drive Block for drive.google.com.
+    Drive Block for drive.google.com
     """
 
     _type = "drive"
@@ -98,7 +98,7 @@ class FigmaBlock(EmbedBlock):
 
 class LoomBlock(EmbedBlock):
     """
-    Loom Block for ???
+    Loom Block for loom.com
     """
 
     _type = "loom"
@@ -106,7 +106,7 @@ class LoomBlock(EmbedBlock):
 
 class MiroBlock(EmbedBlock):
     """
-    Miro Block for ???
+    Miro Block for miro.com
     """
 
     _type = "miro"
@@ -114,7 +114,7 @@ class MiroBlock(EmbedBlock):
 
 class TypeformBlock(EmbedBlock):
     """
-    Typeform Block for ???
+    Typeform Block for typeform.com
     """
 
     _type = "typeform"
@@ -130,7 +130,7 @@ class CodepenBlock(EmbedBlock):
 
 class MapsBlock(EmbedBlock):
     """
-    Maps Block for maps.google.com.
+    Maps Block for maps.google.com
     """
 
     _type = "maps"
@@ -138,7 +138,7 @@ class MapsBlock(EmbedBlock):
 
 class InvisionBlock(EmbedBlock):
     """
-    Invision Block for ???
+    Invision Block for invisionapp.com
     """
 
     _type = "invision"
@@ -146,7 +146,7 @@ class InvisionBlock(EmbedBlock):
 
 class WhimsicalBlock(EmbedBlock):
     """
-    Whimsical Block for ???
+    Whimsical Block for whimsical.com
     """
 
     _type = "whimsical"

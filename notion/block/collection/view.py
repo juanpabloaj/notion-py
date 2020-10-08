@@ -15,10 +15,6 @@ class CollectionView(Record):
     name = field_map("name")
     type = field_map("type")
 
-    @property
-    def parent(self):
-        return self._client.get_block(self.get("parent_id"))
-
     def __init__(self, *args, collection, **kwargs):
         super().__init__(*args, **kwargs)
         self.collection = collection
@@ -33,6 +29,10 @@ class CollectionView(Record):
         Return default query.
         """
         return self.build_query(**self.get("query", {}))
+
+    @property
+    def parent(self):
+        return self._client.get_block(self.get("parent_id"))
 
 
 class CalendarView(CollectionView):

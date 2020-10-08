@@ -1,5 +1,5 @@
 import time
-from typing import Union, Optional
+from typing import Union, Optional, List
 
 from notion.block.basic import Block
 from notion.logger import logger
@@ -14,27 +14,34 @@ class Children:
         self._parent = parent
         self._client = parent._client
 
-    def filter(self, block_type: Union[Block, str]) -> list:
-        """
-        Get list of children of particular type.
+    def __repr__(self):
+        children = "\n" if len(self) else ""
+        for child in self:
+            children += f"  {repr(child)},\n"
 
+        return f"<{self.__class__.__name__} [{children}]>"
 
-        Arguments
-        ---------
-        block_type : Block or str
-            Block type to filter on.
-            Either a Block or block type as str.
+    def __len__(self):
+        return len(self._content_list())
 
+    def __getitem__(self, key) -> Union[Optional[Block], List[Optional[Block]]]:
+        result = self._content_list()[key]
+        if not isinstance(result, list):
+            return self._get_block(result)
 
-        Returns
-        -------
-        list
-            List of blocks.
-        """
-        if not isinstance(block_type, str):
-            block_type = block_type._type
+        return [self._get_block(block_id) for block_id in result]
 
-        return [kid for kid in self if kid._type == block_type]
+    def __delitem__(self, key):
+        self._get_block(self._content_list()[key]).remove()
+
+    def __iter__(self):
+        return iter(self._get_block(bid) for bid in self._content_list())
+
+    def __reversed__(self):
+        return reversed(list(self))
+
+    def __contains__(self, other: Union[Block, str]):
+        return extract_id(other) in self._content_list()
 
     def _content_list(self) -> list:
         return self._parent.get(self._child_list_key) or []
@@ -57,36 +64,9 @@ class Children:
 
         return block
 
-    def __repr__(self):
-        children = "\n" if len(self) else ""
-        for child in self:
-            children += f"  {repr(child)},\n"
-
-        return f"<{self.__class__.__name__} [{children}]>"
-
-    def __len__(self):
-        return len(self._content_list())
-
-    def __getitem__(self, key):
-        result = self._content_list()[key]
-        if not isinstance(result, list):
-            return self._get_block(result)
-
-        return [self._get_block(block_id) for block_id in result]
-
-    def __delitem__(self, key):
-        self._get_block(self._content_list()[key]).remove()
-
-    def __iter__(self):
-        return iter(self._get_block(bid) for bid in self._content_list())
-
-    def __reversed__(self):
-        return reversed(list(self))
-
-    def __contains__(self, other: Union[Block, str]):
-        return extract_id(other) in self._content_list()
-
-    def add_new(self, block: Block, child_list_key: str = None, **kwargs) -> Block:
+    def add_new(
+        self, block: Block, child_list_key: str = None, **kwargs
+    ) -> Optional[Block]:
         """
         Create a new block, add it as the last child of this
         parent block, and return the corresponding Block instance.
@@ -136,7 +116,7 @@ class Children:
 
         return block
 
-    def add_alias(self, block: Block) -> Block:
+    def add_alias(self, block: Block) -> Optional[Block]:
         """
         Adds an alias to the provided `block`, i.e. adds
         the block's ID to the parent's content list,
@@ -164,6 +144,28 @@ class Children:
 
         return self._get_block(block.id)
 
+    def filter(self, block_type: Union[Block, str]) -> list:
+        """
+        Get list of children of particular type.
+
+
+        Arguments
+        ---------
+        block_type : Block or str
+            Block type to filter on.
+            Either a Block or block type as str.
+
+
+        Returns
+        -------
+        list
+            List of blocks.
+        """
+        if not isinstance(block_type, str):
+            block_type = block_type._type
+
+        return [kid for kid in self if kid._type == block_type]
+
 
 class Templates(Children):
     """
@@ -174,7 +176,7 @@ class Templates(Children):
 
     _child_list_key = "template_pages"
 
-    def add_new(self, **kwargs):
+    def add_new(self, **kwargs) -> Optional[Block]:
         kwargs["block_type"] = "page"
         kwargs["child_list_key"] = self._child_list_key
         kwargs["is_template"] = True
