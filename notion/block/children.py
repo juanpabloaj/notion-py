@@ -14,18 +14,32 @@ class Children:
         self._parent = parent
         self._client = parent._client
 
-    def filter(self, type=None) -> list:
-        kids = list(self)
-        if type:
-            if isinstance(type, str):
-                type = get_block_type(type)
-            kids = [kid for kid in kids if isinstance(kid, type)]
-        return kids
+    def filter(self, block_type: Union[Block, str]) -> list:
+        """
+        Get list of children of particular type.
+
+
+        Arguments
+        ---------
+        block_type : Block or str
+            Block type to filter on.
+            Either a Block or block type as str.
+
+
+        Returns
+        -------
+        list
+            List of blocks.
+        """
+        if isinstance(block_type, Block):
+            block_type = block_type._type
+
+        return [kid for kid in self if kid._type == block_type]
 
     def _content_list(self) -> list:
         return self._parent.get(self._child_list_key) or []
 
-    def _get_block(self, url_or_id: str):
+    def _get_block(self, url_or_id: str) -> Optional[Block]:
         # NOTE: this is needed because there seems to be a server-side
         #       race condition with setting and getting data
         #       (sometimes the data previously sent hasn't yet
