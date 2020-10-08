@@ -31,7 +31,7 @@ class Children:
         list
             List of blocks.
         """
-        if isinstance(block_type, Block):
+        if not isinstance(block_type, str):
             block_type = block_type._type
 
         return [kid for kid in self if kid._type == block_type]
