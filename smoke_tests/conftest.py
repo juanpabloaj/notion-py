@@ -19,7 +19,7 @@ class NotionTestContext:
     store: AttrDict
 
 
-@pytest.fixture
+@pytest.fixture(scope="session", autouse=True)
 def notion(_cache=[]):
     if _cache:
         return _cache[0]
@@ -34,11 +34,12 @@ def notion(_cache=[]):
     if page is None:
         raise ValueError(f"No such page under url: {page_url}")
 
-    clean_root_page(page)
-
     notion = NotionTestContext(client, page, store)
     _cache.append(notion)
-    return notion
+
+    yield notion
+
+    clean_root_page(page)
 
 
 def clean_root_page(page):
