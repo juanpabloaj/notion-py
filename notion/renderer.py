@@ -400,7 +400,9 @@ class BaseHTMLRenderer:
         collection_divs = self._render_blocks_into(block.collection.get_rows())
         return [h2(block.title)] + collection_divs
 
-    def render(self, indent: str = "  ", pretty: bool = True, xhtml: bool = False) -> str:
+    def render(
+        self, indent: str = "  ", pretty: bool = True, xhtml: bool = False
+    ) -> str:
         """
         Renders the HTML, kwargs takes kwargs for render() function
         https://github.com/Knio/dominate#rendering
@@ -427,6 +429,7 @@ class BaseHTMLRenderer:
         str
             Rendered blocks.
         """
+
         def _render_el(e):
             if isinstance(e, dom_tag):
                 return e.render(indent=indent, pretty=pretty, xhtml=xhtml)
