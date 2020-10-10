@@ -49,7 +49,7 @@ def test_callout_block(notion):
 def test_code_block(notion):
     block = notion.root_page.children.add_new(CodeBlock)
     assert_block_is_okay(**locals(), type="code")
-    assert_block_attributes(block, color="blue", language="Erlang", title="code")
+    assert_block_attributes(block, color="blue", language="Go", title="code")
 
 
 def test_column_block(notion):
