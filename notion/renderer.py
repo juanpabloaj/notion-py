@@ -1,7 +1,6 @@
 from typing import Iterable
 
 import mistletoe
-import requests
 from dominate.tags import *
 from dominate.util import raw
 from mistletoe import block_token, span_token
@@ -11,7 +10,7 @@ from notion.block.basic import Block
 from notion.block.collection.basic import CollectionBlock
 
 # This is the minimal css stylesheet to apply to get decent looking output.
-# It won't make it look exactly like Notion.so but will have the same basic structure.
+# It won't make it look exactly like Notion.so but will have the same structure
 from notion.settings import CHART_API_URL, TWITTER_API_URL
 
 HTMLRendererStyles = """
@@ -173,20 +172,21 @@ class BaseHTMLRenderer:
         if block.id in self.exclude_ids:
             return []
 
-        renderer = getattr(self, f"render_{block._type}", None)
-        if not callable(renderer):
-            if hasattr(self, "render_default"):
-                renderer = self.render_default
-            else:
-                raise ValueError(f"No handler for block type '{block._type}'.")
+        renderer = getattr(self, "render_default", None)
+        renderer = getattr(self, f"render_{block._type}", renderer)
 
-        elements = renderer(block)
+        if not renderer:
+            raise ValueError(f"No handler for block type '{block._type}'.")
+
+        elements = renderer(block=block)
 
         # TODO: find a better way of marking that information
         # If the block has no children, or the called function handles
         # the child rendering itself, don't render the children
         class_function = getattr(self.__class__, renderer.__name__)
-        if not block.children or hasattr(class_function, "handles_children_rendering"):
+        renders_children = hasattr(class_function, "handles_children_rendering")
+
+        if not block.children or renders_children:
             return elements
 
         return elements + self._render_blocks_into(block.children, None)
@@ -199,7 +199,7 @@ class BaseHTMLRenderer:
     def render_default(self, block):
         return [p(md(block.title))]
 
-    def render_divider(self, block):
+    def render_divider(self, **_):
         return [hr()]
 
     @handles_children_rendering
@@ -215,7 +215,7 @@ class BaseHTMLRenderer:
     def render_to_do(self, block):
         block_id = f"chk_{block.id}"
         return [
-            input(
+            input_(
                 label(_for=block_id),
                 type="checkbox",
                 id=block_id,
@@ -225,11 +225,9 @@ class BaseHTMLRenderer:
         ]
 
     def render_code(self, block):
-        # TODO: Do we want this to support Markdown? I think there's a notion-py
-        #       change that might affect this... (the unstyled-title or whatever)
         return [pre(code(block.title))]
 
-    def render_factory(self, block):
+    def render_factory(self, **_):
         # TODO: implement this?
         return []
 
@@ -244,30 +242,30 @@ class BaseHTMLRenderer:
 
     @handles_children_rendering
     def render_page(self, block):
-        # TODO: I would use isinstance(xxx, CollectionBlock) here but it's buggy
-        # https://github.com/jamalex/notion-py/issues/103
-        if isinstance(
-            block.parent, CollectionBlock
-        ):  # If it's a child of a collection (CollectionBlock)
+        inner_blocks = self._render_blocks_into(block.children)
+
+        # If it's a child of a collection (CollectionBlock)
+        if isinstance(block.parent, CollectionBlock):
             if not self.render_table_pages_after_table:
                 return []
-            return [h3(md(block.title))] + self._render_blocks_into(block.children)
-        elif block.parent.id != block.get()["parent_id"]:
-            # A link is a PageBlock where the parent id doesn't equal the _actual_ parent id
-            # of the block
+
+            return [h3(md(block.title))] + inner_blocks
+
+        if block.parent.id != block.get("parent_id"):
+            # A link is a PageBlock where the parent id
+            # doesn't equal the _actual_ parent id of the block
             if not self.render_linked_pages:
                 # Render only the link, none of the content in the link
                 return [a(h4(md(block.title)), href=block.url)]
-        else:  # A normal PageBlock
-            if not self.render_sub_pages and self._render_stack:
-                return [
-                    h4(md(block.title))
-                ]  # Subpages when not rendering them render like in Notion, as a simple heading
 
-        # Otherwise, render a page normally in it's entirety
-        # TODO: This should probably not use a "children-list" but we need to refactor
-        # the _render_stack to make that work...
-        return [h1(md(block.title))] + self._render_blocks_into(block.children)
+        if not self.render_sub_pages and self._render_stack:
+            # non-direct subpage rendering, use a simple header
+            return [h4(md(block.title))]
+
+        # render a page normally in it's entirety
+        # TODO: This should probably not use a "children-list"
+        #       but we need to refactor the _render_stack to make that work
+        return [h1(md(block.title))] + inner_blocks
 
     @handles_children_rendering
     def render_bulleted_list(self, block):
@@ -316,14 +314,10 @@ class BaseHTMLRenderer:
         return [p(img(src=CHART_API_URL + block.latex))]
 
     def render_embed(self, block):
-        return [
-            iframe(
-                src=block.display_source or block.source,
-                frameborder=0,
-                sandbox="allow-scripts allow-popups allow-forms allow-same-origin",
-                allowfullscreen="",
-            )
-        ]
+        src = block.display_source or block.source
+        sandbox = "allow-scripts allow-popups allow-forms allow-same-origin"
+        el = iframe(src=src, sandbox=sandbox, frameborder=0, allowfullscreen="")
+        return [el]
 
     def render_file(self, block):
         return self.render_embed(block)
@@ -335,17 +329,18 @@ class BaseHTMLRenderer:
         # TODO: this won't work if there's no file extension
         #       we might have to query and get the MIME type
         src = block.display_source or block.source
-        type = "video/" + src.split(".")[-1]
-        return [video(source(src=src, type=type), controls=True)]
+        ext = "video/" + src.split(".")[-1]
+        return [video(source(src=src, type=ext), controls=True)]
 
     def render_audio(self, block):
         return [audio(src=block.display_source or block.source, controls=True)]
 
     def render_image(self, block):
         attrs = {"alt": block.caption} if block.caption else {}
-        return [img(src=block.display_source or block.source, **attrs)]
+        src = block.display_source or block.source
+        return [img(src=src, **attrs)]
 
-    def render_bookmark(self, block):
+    def render_bookmark(self, **_):
         # return bookmark_template.format(link=, title=block.title, description=block.description, icon=block.bookmark_icon, cover=block.bookmark_cover)
         # TODO: It's just a social share card for the website we're bookmarking
         return [a(href="block.link")]
@@ -363,7 +358,8 @@ class BaseHTMLRenderer:
         return self.render_embed(block)
 
     def render_tweet(self, block):
-        return block._client.get(TWITTER_API_URL + block.source).json()["html"]
+        url = TWITTER_API_URL + block.source
+        return block._client.get(url).json()["html"]
 
     def render_gist(self, block):
         return self.render_embed(block)
@@ -401,23 +397,44 @@ class BaseHTMLRenderer:
         if not self.render_table_pages_after_table:
             return []
 
-        return [h2(block.title)] + self._render_blocks_into(block.collection.get_rows())
+        collection_divs = self._render_blocks_into(block.collection.get_rows())
+        return [h2(block.title)] + collection_divs
 
-    def render(self, **kwargs):
+    def render(self, indent: str = "  ", pretty: bool = True, xhtml: bool = False) -> str:
         """
-        Renders the HTML, kwargs takes kwargs for Dominate's render() function
+        Renders the HTML, kwargs takes kwargs for render() function
         https://github.com/Knio/dominate#rendering
 
-        These can be:
-        `pretty` - Whether or not to be pretty
-        `indent` - Indent character to use
-        `xhtml` - Whether or not to use XHTML instead of HTML (<br /> instead of <br>)
-        """
 
+        Attributes
+        ----------
+        indent : str, optional
+            String used for indenting the rendered text.
+            Defaults to str consisting of two spaces.
+
+        pretty : bool, optional
+            Whether or not to render the HTML in a human-readable way.
+            Defaults to True.
+
+        xhtml : bool, False
+            Whether or not to use XHTML instead of HTML.
+            Example: <br /> instead of <br>
+            Defaults to False.
+
+
+        Returns
+        -------
+        str
+            Rendered blocks.
+        """
         def _render_el(e):
-            return e.render(**kwargs) if isinstance(e, dom_tag) else e
+            if isinstance(e, dom_tag):
+                return e.render(indent=indent, pretty=pretty, xhtml=xhtml)
+
+            return e
 
         styles = HTMLRendererStyles if self.render_with_styles else ""
-        return styles + "".join(
-            _render_el(e) for e in self.render_block(self.start_block)
-        )
+        blocks = self.render_block(self.start_block)
+        rendered = "".join(_render_el(e) for e in blocks)
+
+        return styles + rendered

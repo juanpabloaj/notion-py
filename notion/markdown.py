@@ -74,26 +74,26 @@ FORMAT_PRECEDENCE = ["s", "b", "i", "a", "c"]
 
 
 def _extract_text_and_format_from_ast(item: dict):
+    literal = item.get("literal", "")
     item_type = item["type"]
 
     if item_type == "html_inline":
-        if item.get("literal", "") == "<s>":
+        if literal == "<s>":
             return "", ("s",)
 
-    if item_type == "emph":
-        return item.get("literal", ""), ("i",)
-
     if item_type == "strong":
-        return item.get("literal", ""), ("b",)
+        return literal, ("b",)
 
-    if item_type == "code":
-        return item.get("literal", ""), ("c",)
+    if item_type == "emph":
+        return literal, ("i",)
 
     if item_type == "link":
-        if "destination" in item:
-            return item.get("literal", ""), ("a", item["destination"])
+        return literal, ("a", item.get("destination", ""))
 
-    return item.get("literal", ""), ()
+    if item_type == "code":
+        return literal, ("c",)
+
+    return literal, ()
 
 
 def _get_format(notion_segment, as_set=False):
@@ -332,7 +332,7 @@ def notion_to_plaintext(notion: list, client=None) -> str:
     ---------
     notion : list
         Text in a Notion specific API format
-        i. e [["some text"]]
+        i.e. [["some text"]]
 
     client : NotionClient, optional
         Used for getting blocks, if passed.
