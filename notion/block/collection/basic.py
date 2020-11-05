@@ -131,7 +131,8 @@ class CollectionBlock(Block):
             if update_views:
                 # make sure the new record is inserted at the end of each view
                 for view in self.parent.views:
-                    if isinstance(view, CalendarView):
+                    # TODO: why we skip CalendarView? can we remove that 'if'?
+                    if not view or isinstance(view, CalendarView):
                         continue
                     view.set("page_sort", view.get("page_sort", []) + [row_id])
 
