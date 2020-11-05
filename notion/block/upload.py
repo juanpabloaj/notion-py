@@ -1,10 +1,11 @@
 import os
 from mimetypes import guess_type
-from urllib.parse import urlencode, urlparse
+from urllib.parse import urlencode, urlparse, quote
 
 from notion.block.embed import EmbedBlock
 from notion.maps import field_map, property_map
-from notion.utils import human_size
+from notion.settings import SIGNED_URL_PREFIX
+from notion.utils import human_size, from_list
 
 
 class UploadBlock(EmbedBlock):
@@ -60,6 +61,45 @@ class UploadBlock(EmbedBlock):
         self.source = query_url
         self.display_source = query_url
         self.file_id = urlparse(url).path.split("/")[2]
+
+    def download_file(self, path: str):
+        """
+        Download a file.
+
+
+        Arguments
+        ---------
+        path : str
+            Path for saving file.
+
+
+        Raises
+        ------
+        HTTPError
+            On API error.
+        """
+
+        record_data = self._get_record_data()
+        source = record_data["properties"]["source"]
+        s3_url = from_list(source)
+        file_name = s3_url.split("/")[-1]
+
+        params = {
+            "cache": "v2",
+            "name": file_name,
+            "id": self._id,
+            "table": self._table,
+            "userId": self._client.current_user.id,
+            "download": True,
+        }
+
+        url = SIGNED_URL_PREFIX + quote(s3_url, safe="")
+        resp = self._client.session.get(url, params=params, stream=True)
+        resp.raise_for_status()
+
+        with open(path, "wb") as f:
+            for chunk in resp.iter_content(chunk_size=4096):
+                f.write(chunk)
 
 
 class FileBlock(UploadBlock):

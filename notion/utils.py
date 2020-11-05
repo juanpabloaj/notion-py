@@ -33,6 +33,28 @@ def to_list(value) -> list:
     return value if isinstance(value, list) else [value]
 
 
+def from_list(value) -> Any:
+    """
+    Unwrap value from nested list.
+
+
+    Arguments
+    ---------
+    value : List
+        Nested list with target value.
+
+
+    Returns
+    -------
+    Any
+        Value from nested list.
+    """
+    if "__iter__" in dir(value) and not isinstance(value, str):
+        return from_list(next(iter(value), None))
+
+    return value
+
+
 def now() -> int:
     """
     Get UNIX-style time since epoch in seconds.
