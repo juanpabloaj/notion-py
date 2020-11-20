@@ -419,6 +419,7 @@ class NotionClient:
         CollectionView
             Found collectionView or None.
         """
+
         if url_or_id.startswith("http"):
             # if it's a URL for a database page,
             # try extracting the collection and view IDs
@@ -429,7 +430,13 @@ class NotionClient:
                 )
 
             collection_id, view_id = match.groups()
+            collection_id = self.get_record_data(
+                table="block",
+                url_or_id=collection_id,
+                force_refresh=force_refresh,
+            )["collection_id"]
             collection = self.get_collection(collection_id, force_refresh)
+
         else:
             view_id = url_or_id
 
@@ -440,7 +447,9 @@ class NotionClient:
                 )
 
         view = self.get_record_data(
-            "collection_view", view_id, force_refresh=force_refresh
+            table="collection_view",
+            url_or_id=view_id,
+            force_refresh=force_refresh,
         )
 
         if view:

@@ -296,7 +296,7 @@ class Record:
         path: str = "",
         default: Any = None,
         force_refresh: bool = False,
-    ) -> dict:
+    ) -> Union[dict, str]:
         """
         Retrieve cached data for this record.
 
@@ -322,7 +322,7 @@ class Record:
 
         Returns
         -------
-        dict
+        Union[dict, str]
             Cached data.
         """
         obj = self._get_record_data(force_refresh=force_refresh)

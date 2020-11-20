@@ -241,17 +241,17 @@ class RecordStore:
         requests = []
 
         for table, ids in kwargs.items():
-
-            # ensure "ids" is a proper list
-            if ids:
-                ids = list(self._values.get(table, {}).keys())
+            # TODO: ids can be `True` and if it is then we take every
+            #       key from collection_view into consideration, is it OK?
+            if ids is True:
+                ids = self._values.get(table, {}).keys()
             ids = to_list(ids)
 
             # if we're in a transaction, add the requested IDs
             # to a queue to refresh when the transaction completes
             if self._client.in_transaction():
-                records = set(self._records_to_refresh.get(table, []) + ids)
-                self._records_to_refresh[table] = list(records)
+                records = self._records_to_refresh.get(table, []) + ids
+                self._records_to_refresh[table] = list(set(records))
                 continue
 
             requests += [{"table": table, "id": extract_id(i)} for i in ids]

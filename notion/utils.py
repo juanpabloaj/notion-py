@@ -242,7 +242,7 @@ def slugify(text: str) -> str:
     return _dash_slugify(text).replace("-", "_")
 
 
-def get_by_path(path: str, obj: Any, default: Any = None) -> dict:
+def get_by_path(path: str, obj: Any, default: Any = None):
     """
     Get value from object's key by dotted path (i.e. "path.to.some.key").
 
