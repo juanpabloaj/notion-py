@@ -122,7 +122,7 @@ def extract_id(source) -> Optional[str]:
         ID of the block or None.
     """
     if not isinstance(source, str):
-        return source.id
+        return source.get("id")
 
     if source.startswith(BASE_URL):
         source = (

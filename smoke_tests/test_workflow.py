@@ -118,6 +118,8 @@ def test_workflow_2_collection_view(notion):
     cvb.title = "My data!"
     view = cvb.views.add_new(view_type="table")
 
+    assert notion.client.get_collection_view(view.id, view.collection)
+
     notion.store.cvb = cvb
     notion.store.view = view
 
