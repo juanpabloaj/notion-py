@@ -192,11 +192,11 @@ def add_signed_prefix_as_needed(url: str, client=None) -> str:
         return ""
 
     if url.startswith(S3_URL_PREFIX):
-        path, query = url.split("?")
+        path, query = (url.split("?") + [""])[:2]
         url = f"{SIGNED_URL_PREFIX}{quote_plus(path)}?{query}"
 
         if client:
-            url = client.session.head(url).headers.get("Location")
+            url = client.session.head(url).headers.get("Location", url)
 
     return url
 

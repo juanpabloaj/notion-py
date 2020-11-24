@@ -338,6 +338,10 @@ class BaseHTMLRenderer:
     def render_image(self, block):
         attrs = {"alt": block.caption} if block.caption else {}
         src = block.display_source or block.source
+        path, query = (src.split("?") + [""])[:2]
+        if query == "":
+            query = "table=block&id=" + block.id
+            src = path + "?" + query
         return [img(src=src, **attrs)]
 
     def render_bookmark(self, **_):
