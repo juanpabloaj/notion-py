@@ -260,20 +260,25 @@ class BaseHTMLRenderer:
 
     def render_to_do(self, block):
         block_id = f"chk_{block.id}"
-        return [div([
-            input_(
-                label(_for=block_id),
-                type="checkbox",
-                id=block_id,
-                checked=block.checked,
-                title=block.title,
-            ),
-            span(block.title)
-        ], _class="checked" if block.checked else "unchecked")]
+        return [
+            div(
+                [
+                    input_(
+                        label(_for=block_id),
+                        type="checkbox",
+                        id=block_id,
+                        checked=block.checked,
+                        title=block.title,
+                    ),
+                    span(block.title),
+                ],
+                _class="checked" if block.checked else "unchecked",
+            )
+        ]
 
     def render_code(self, block):
         return [pre(code(block.title), _class="code")]
-        
+
     def render_factory(self, **_):
         # TODO: implement this?
         return []
@@ -354,7 +359,14 @@ class BaseHTMLRenderer:
 
     @handles_children_rendering
     def render_toggle(self, block):
-        return [details([summary(md(block.title)), self._render_blocks_into(block.children, None)])]
+        return [
+            details(
+                [
+                    summary(md(block.title)),
+                    self._render_blocks_into(block.children, None),
+                ]
+            )
+        ]
 
     def render_quote(self, block):
         return [blockquote(md(block.title))]
