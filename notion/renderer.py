@@ -14,40 +14,80 @@ from notion.block.collection.basic import CollectionBlock
 from notion.settings import CHART_API_URL, TWITTER_API_URL
 
 HTMLRendererStyles = """
-<style>
-    html, body {
-        padding: 20px;
-        margin: 20px auto;
-        width: 900px;
-        font-size: 16px;
-        font-family: 
-            "-apple-system",
-            "BlinkMacSystemFont",
-            "Segoe UI",
-            "Helvetica",
-            "Apple Color Emoji",
-            "Arial",
-            "sans-serif",
-            "Segoe UI Emoji",
-            "Segoe UI Symbol";
-    }
-    .children-list {
-        margin-left: cRems(20px);
-    }
-    .column-list {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .callout {
-        display: flex;
-    }
-    .callout > .icon {
-        flex: 0 1 40px;
-    }
-    .callout > .text {
-        flex: 1 1 auto;
-    }
+<style type="text/css">
+.index > .children-list {
+  margin-left: 0em;
+}
+
+.callout,
+pre.code {
+  margin-top: 1em;
+  margin-bottom: 1em;
+  padding: 1em;
+  background: rgba(233, 229, 227, 0.3);
+  display: flex;
+}
+
+.callout > .icon {
+  flex: 0 1 40px;
+}
+.callout > .text {
+  flex: 1 1 auto;
+}
+
+ul,
+ol {
+  padding-left: 1em;
+}
+
+blockquote {
+  padding-left: 1em;
+  margin-left: 0em;
+  border-left: 0.2em solid black;
+}
+
+html,
+body {
+  padding: 2em;
+  margin: 2em auto;
+  width: 900px;
+  font-size: 16px;
+  font-family: "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Helvetica", "Apple Color Emoji", "Arial",
+    "sans-serif", "Segoe UI Emoji", "Segoe UI Symbol";
+}
+
+.children-list {
+  margin: 0.4em;
+  margin-left: 1em;
+}
+
+.children-list p {
+  margin-top: 0.4em;
+  margin-bottom: 0.4em;
+  min-height: 1em;
+}
+
+.children-list ul li,
+.children-list ol li {
+  margin-top: 0.4em;
+  margin-bottom: 0.4em;
+}
+
+.column-list {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.checked,
+.unchecked {
+  margin-top: 0.4em;
+  margin-bottom: 0.4em;
+}
+
+body > .children-list > img {
+  width: 900px;
+}
 </style>
 """
 
@@ -106,6 +146,7 @@ class BaseHTMLRenderer:
         render_with_styles: bool = False,
         render_linked_pages: bool = False,
         render_table_pages_after_table: bool = False,
+        render_sub_pages_links: bool = True,
     ):
         """
         Attributes
@@ -120,6 +161,10 @@ class BaseHTMLRenderer:
         render_sub_pages : bool, optional
             Whether to render sub pages.
             Defaults to True.
+
+        render_sub_pages_links : bool, optional
+            Whether to render sub pages as a link at the bottom, if render_sub_pages = False
+            Defaults to False.
 
         render_with_styles : bool, optional
             Whether to include CSS styles inside rendered HTML.
@@ -141,6 +186,7 @@ class BaseHTMLRenderer:
         self.render_with_styles = render_with_styles
         self.render_linked_pages = render_linked_pages
         self.render_table_pages_after_table = render_table_pages_after_table
+        self.render_sub_pages_links = render_sub_pages_links
 
     def _get_previous_sibling_el(self):
         """
@@ -214,19 +260,20 @@ class BaseHTMLRenderer:
 
     def render_to_do(self, block):
         block_id = f"chk_{block.id}"
-        return [
+        return [div([
             input_(
                 label(_for=block_id),
                 type="checkbox",
                 id=block_id,
                 checked=block.checked,
                 title=block.title,
-            )
-        ]
+            ),
+            span(block.title)
+        ], _class="checked" if block.checked else "unchecked")]
 
     def render_code(self, block):
-        return [pre(code(block.title))]
-
+        return [pre(code(block.title), _class="code")]
+        
     def render_factory(self, **_):
         # TODO: implement this?
         return []
@@ -259,8 +306,12 @@ class BaseHTMLRenderer:
                 return [a(h4(md(block.title)), href=block.url)]
 
         if not self.render_sub_pages and self._render_stack:
-            # non-direct subpage rendering, use a simple header
-            return [h4(md(block.title))]
+            if self.render_sub_pages_links:
+                # non-direct subpage rendering, use a simple header
+                return [a(h4(md(block.title), _class="subpage"), href=block.url)]
+            else:
+                # do not render subpages as links
+                return []
 
         # render a page normally in it's entirety
         # TODO: This should probably not use a "children-list"
@@ -301,8 +352,9 @@ class BaseHTMLRenderer:
 
         return [container_el]
 
+    @handles_children_rendering
     def render_toggle(self, block):
-        return [details(summary(md(block.title)))]
+        return [details([summary(md(block.title)), self._render_blocks_into(block.children, None)])]
 
     def render_quote(self, block):
         return [blockquote(md(block.title))]
@@ -392,7 +444,7 @@ class BaseHTMLRenderer:
     def render_callout(self, block):
         icon = div(block.icon, _class="icon")
         title = div(md(block.title), _class="text")
-        return [div(icon + title, _class="callout")]
+        return [div([icon, title], _class="callout")]
 
     def render_collection_view(self, block):
         # TODO: render out the table itself
