@@ -294,6 +294,10 @@ class RecordStore:
 
     def store_record_map(self, data: dict) -> dict:
         data = data["recordMap"]
+
+        # Feb 4, 2021 - notion.so added this empty key, no idea why
+        data.pop("__json__")
+
         for table, records in data.items():
             for record_id, record in records.items():
                 self._update_record(
