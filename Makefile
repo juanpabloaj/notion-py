@@ -1,6 +1,6 @@
-.PHONY: help clean install dev-install self-install build
-.PHONY: publish docs serve-docs lock format try-format
-.PHONY: test try-test smoke-test try-smoke-test
+.PHONY: help clean install dev-install self-install
+.PHONY: build bump-% release publish docs serve-docs lock 
+.PHONY: format try-format test try-test smoke-test try-smoke-test
 
 
 tests       = $(or $(word 2, $(MAKECMDGOALS)), tests/)
@@ -42,7 +42,11 @@ build: ## build wheel package
 
 
 bump-%:  ## bump version (major, minor, patch)
-	bash docs/bump-version.sh $(subst bump-,,$@)
+	@bash docs/bump-version.sh $(subst bump-,,$@)
+
+
+release:  ## generate release notes from commits
+	@bash docs/release-summary.sh
 
 
 publish:  ## publish the package on PyPI
