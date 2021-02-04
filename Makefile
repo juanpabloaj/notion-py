@@ -14,7 +14,7 @@ help:  ## display this help
 			FS = ":.*##"; \
 			printf "Usage:\n\t make \033[36m"; \
 			printf "<target>\033[0m\n\nTargets:\n"; \
-		} /^[a-zA-Z_-]+:.*?##/ { \
+		} /^[\-a-z%]+:.*##/ { \
 			printf "\033[36m%17s\033[0m -%s\n", $$1, $$2; \
 		}' $(MAKEFILE_LIST)
 
@@ -39,6 +39,10 @@ self-install:  ## install the package locally
 
 build: ## build wheel package
 	python setup.py sdist bdist_wheel
+
+
+bump-%:  ## bump version (major, minor, patch)
+	bash docs/bump-version.sh $(subst bump-,,$@)
 
 
 publish:  ## publish the package on PyPI
