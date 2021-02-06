@@ -9,3 +9,6 @@ sphinx
 sphinx-rtd-theme
 sphinxcontrib-apidoc
 livereload
+
+pdbpp
+ipython
