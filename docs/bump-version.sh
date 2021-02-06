@@ -61,27 +61,7 @@ git push origin "$new_tag"
 
 echo "done"
 echo "creating release notes file"
-refs=$(echo $(git show-ref --tags -s | tail -2) | sed 's/ /../')
-diff=$(git log --oneline "$refs")
-
-python3 > "$new_tag.md" <<EOF
-from collections import defaultdict
-commits = defaultdict(list)
-
-for c in """$diff""".split("\n")[1:]:
-    h, msg = c[:7], c[8:]
-    mod, *msg = msg.split(": ")
-    if not len(msg):
-        msg, mod = [mod], "other"
-    commits[mod.lower()].append((h, msg[0]))
-
-for mod in sorted(commits):
-    print(f"\n\n#### {mod}")
-    for (h, m) in commits[mod]:
-        print(f"{h}: {m}")
-
-print("\n")
-EOF
+bash ./docs/gen-notes.sh > "'$new_tag.md'"
 
 echo "done"
 echo "publishing release notes on github"
@@ -90,9 +70,9 @@ new_tag_sha=$(git show-ref --tags -s | tail -1)
 echo gh release create \
   --repo "$REPOSITORY" \
   --title "'Release: $new_tag'" \
-  --notes-file "$new_tag.md" \
+  --notes-file "'$new_tag.md'" \
   --target "$new_tag_sha" \
   --draft
 
-rm "$new_tag.md"
+rm "'$new_tag.md'"
 echo "all done, have a nice day :)"
