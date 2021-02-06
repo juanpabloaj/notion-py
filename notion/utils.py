@@ -1,7 +1,7 @@
 import os
 import uuid
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Optional, Iterator
 from urllib.parse import urlparse, parse_qs, quote_plus, unquote_plus
 
 from slugify import slugify as _dash_slugify
@@ -242,9 +242,40 @@ def slugify(text: str) -> str:
     return _dash_slugify(text).replace("-", "_")
 
 
-def get_by_path(path: str, obj: Any, default: Any = None):
+def split_on_dot(path: str) -> Iterator[str]:
     """
-    Get value from object's key by dotted path (i.e. "path.to.some.key").
+    Convert path (i.e "path.to.0.some.key") to an iterator of keys
+    worth trying out when traversing some data structure in depth.
+
+
+    Arguments
+    ---------
+    path : str
+        Path in string form.
+
+
+    Returns
+    -------
+    Iterator[str]
+        Iterator with all possible keys.
+    """
+    pos = 0
+
+    while True:
+        pos = path.find(".", pos)
+        if pos == -1:
+            break
+
+        yield path[: pos + 0]
+        yield path[: pos + 1]
+        pos += 2
+
+    yield path
+
+
+def get_by_path(path: str, obj: Any, default: Any = None) -> Any:
+    """
+    Get value from object's key by dotted path (i.e. "path.to.0.some.key").
 
 
     Arguments
@@ -262,19 +293,39 @@ def get_by_path(path: str, obj: Any, default: Any = None):
 
     Returns
     -------
-    dict
+    Any
         Value stored under specified key or default value.
     """
-    path = path.split(".")
+    offset = 0
 
-    # try to traverse down the sequence of keys defined
-    # in the path, to get the target value if it exists
-    try:
-        for key in path:
-            if isinstance(obj, list):
-                key = int(key)
-            obj = obj[key]
-    except (KeyError, TypeError, IndexError):
-        obj = default
+    for key in split_on_dot(path):
+        key = key[offset:]
+        key_len = len(key) + 1  # the 1 accounts for the dot
+
+        if key:
+            if isinstance(obj, dict):
+                if key in obj:
+                    obj = obj[key]
+                    offset += key_len
+
+            elif isinstance(obj, list):
+                try:
+                    idx = int(key)
+                except ValueError:
+                    return default
+
+                if idx >= len(obj):
+                    return default
+
+                obj = obj[idx]
+                offset += key_len
+
+            # we don't support other types
+            else:
+                return default
+
+    # in case path was not fully traversed
+    if len(path) != offset - 1:
+        return default
 
     return obj
