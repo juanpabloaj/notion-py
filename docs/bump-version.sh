@@ -13,6 +13,8 @@
 # it's private (as in for my own personal use) but it
 # happened to be shared publicly for your amusement :)
 
+set -Eeuo pipefail
+
 REPOSITORY="arturtamborski/notion-py"
 VERSION_FILE="notion/__init__.py"
 
