@@ -28,23 +28,20 @@
 > **_NOTE:_**  This is a fork of the 
 [original repository](https://github.com/jamalex/notion-py)
 created by [Jamie Alexandre](https://github.com/jamalex).
-That repository seems to be abandoned.  
-I've sent an email to Jamie if I can be a maintainer
-but unfortunately I have not received any response,
-hence my work on this fork and second package on PyPI.  
+
 You can try out this package - it's called 
 [notion-py](https://pypi.org/project/notion-py/)
-on PyPI.
-The original package created by Jamie is  still online
-under the name 
-[notion](https://pypi.org/project/notion/) on PyPI,
+on PyPI. The original package created by Jamie is  still online
+under the name [notion](https://pypi.org/project/notion/) on PyPI,
 so please watch out for any confusion.
+
 imports are still working as before, the `-py` in 
 name is there only to differentiate between these two.
 
 ---
  
-These libraries as of now are _not_ fully compatible.
+These libraries as of now are _not_ fully compatible.  
+(I'm working on sending PRs to the upstream)
 
 List of major differences:
 - imports were changed, especially for blocks and collections.  
@@ -482,16 +479,6 @@ page.change_lock(False)
 
 </details>
 <br>
-
-
----
-
-### Quick plug: Learning Equality is hiring!
-
-We're a [small nonprofit](https://learningequality.org/)
-with [global impact](https://learningequality.org/ka-lite/map/),
-building [exciting tech](https://learningequality.org/kolibri/)!
-We're currently [hiring](https://grnh.se/6epyi21) -- come join us!
 
 
 [documentation-url]: https://notion-py.readthedocs.io

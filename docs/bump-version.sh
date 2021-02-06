@@ -1,5 +1,18 @@
 #!/usr/bin/env bash
 
+# disclaimer: I know it's ugly but it gets the job done.
+# I could've used dev packages for bumping, but they
+# aren't as simple as this script and they need some
+# funny files to work with whereas I want to just
+# increment one digit in one file and that's it.
+# Same goes for rest of this script, the release
+# is a simple thing to do, but it's cumbersome
+# that's the only reason for this script to exist.
+#
+# you can assume that you've never seen this file,
+# it's private (as in for my own personal use) but it
+# happened to be shared publicly for your amusement :)
+
 REPOSITORY="arturtamborski/notion-py"
 VERSION_FILE="notion/__init__.py"
 
