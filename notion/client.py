@@ -612,10 +612,13 @@ class NotionClient:
         while "exportURL" not in task["results"][0]["status"]:
             task = fetch()
 
-        tmp_zip = f"{block_id}.zip"
         url = task["results"][0]["status"]["exportURL"]
-        self._download_url(url, tmp_zip)
-        self._unzip_file(tmp_zip)
+        if export_type == "pdf":
+            self._download_url(url, f"{block_id}.pdf")
+        else:
+            tmp_zip = f"{block_id}.zip"
+            self._download_url(url, tmp_zip)
+            self._unzip_file(tmp_zip)
 
     def get(self, endpoint: str) -> Response:
         """
